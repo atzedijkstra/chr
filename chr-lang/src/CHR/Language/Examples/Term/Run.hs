@@ -53,9 +53,12 @@ runFile runopts f = do
     case mbParse of
       Left e -> putPPLn e
       Right (prog, query, varToNmMp) -> do
-        let sopts = defaultCHRSolveOpts
+        let verbosity = maximum $ [Verbosity_Quiet] ++ maybeToList (mbRunOptVerbosity runopts) ++ (if RunOpt_DebugTrace `elem` runopts then [Verbosity_ALot] else [])
+            sopts = defaultCHRSolveOpts
                       { chrslvOptSucceedOnLeftoverWork = RunOpt_SucceedOnLeftoverWork `elem` runopts
                       , chrslvOptSucceedOnFailedSolve  = RunOpt_SucceedOnFailedSolve  `elem` runopts
+                      , chrslvOptGatherDebugInfo       = verbosity >= Verbosity_Debug
+                      , chrslvOptGatherTraceInfo       = RunOpt_WriteVisualization `elem` runopts || verbosity >= Verbosity_ALot
                       }
             mbp :: CHRMonoBacktrackPrioT C G P P S E IO (SolverResult S)
             mbp = do
@@ -72,7 +75,6 @@ runFile runopts f = do
               -- solve
               liftIO $ msg $ "SOLVE " ++ f
               r <- chrSolve sopts ()
-              let verbosity = maximum $ [Verbosity_Quiet] ++ maybeToList (mbRunOptVerbosity runopts) ++ (if RunOpt_DebugTrace `elem` runopts then [Verbosity_ALot] else [])
               ppSolverResult verbosity r >>= \sr -> liftIO $ putPPLn $ "Solution" >-< indent 2 sr
               if (RunOpt_WriteVisualization `elem` runopts)
                 then

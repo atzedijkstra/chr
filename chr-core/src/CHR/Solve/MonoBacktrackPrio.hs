@@ -68,7 +68,8 @@ import           CHR.Data.VarLookup
 
 import qualified Data.Set                                       as Set
 import qualified Data.PQueue.Prio.Min                           as Que
-import qualified Data.Map                                       as Map
+-- import qualified Data.Map                                       as Map
+import qualified Data.Map.Strict                                as Map
 import qualified Data.IntMap.Strict                             as IntMap
 import qualified Data.IntSet                                    as IntSet
 import qualified Data.Sequence                                  as Seq
@@ -100,6 +101,7 @@ import           CHR.Types
 data Verbosity
   = Verbosity_Quiet         -- default
   | Verbosity_Normal
+  | Verbosity_Debug
   | Verbosity_ALot
   deriving (Eq, Ord, Show, Enum, Typeable)
 
@@ -756,6 +758,8 @@ data CHRSolveOpts
   = CHRSolveOpts
       { chrslvOptSucceedOnLeftoverWork  :: !Bool        -- ^ left over unresolvable (non residue) work is also a successful result
       , chrslvOptSucceedOnFailedSolve   :: !Bool        -- ^ failed solve is considered also a successful result, with the failed constraint as a residue
+      , chrslvOptGatherDebugInfo        :: !Bool        -- ^ gather debug info
+      , chrslvOptGatherTraceInfo        :: !Bool        -- ^ gather trace info
       }
 
 defaultCHRSolveOpts :: CHRSolveOpts
@@ -763,6 +767,8 @@ defaultCHRSolveOpts
   = CHRSolveOpts
       { chrslvOptSucceedOnLeftoverWork  = False
       , chrslvOptSucceedOnFailedSolve   = False
+      , chrslvOptGatherDebugInfo        = False
+      , chrslvOptGatherTraceInfo        = False
       }
 
 -------------------------------------------------------------------------------------------
@@ -779,6 +785,14 @@ chrSolve
        -> CHRMonoBacktrackPrioT c g bp p s e m (SolverResult s)
 chrSolve opts env = slv
   where
+    -- gather debug info
+    dbg | chrslvOptGatherDebugInfo opts = \i -> sndl ^* chrbstReductionSteps =$: (SolverReductionDBG i :)
+        | otherwise                     = \_ -> return ()
+    -- gather trace info
+    -- trc | chrslvOptGatherTraceInfo opts = \i -> fstl ^* chrgstTrace =$: (i :)
+    --     | otherwise                     = \_ -> return ()
+    -- leave this unconditional, does not seem not make a difference for performance
+    trc i = fstl ^* chrgstTrace =$: (i :)
     -- solve
     slv = do
         fstl ^* chrgstStatNrSolveSteps =$: (+1)
@@ -794,10 +808,10 @@ chrSolve opts env = slv
                   let mbSlv = chrmatcherRun (chrBuiltinSolveM env $ workCnstr work) emptyCHRMatchEnv subst
                   
                   -- debug info
-                  sndl ^* chrbstReductionSteps =$: (SolverReductionDBG
+                  dbg $ 
                     (    "solve wk" >#< work
                      >-< "match" >#< mbSlv
-                    ) :)
+                    )
 
                   case mbSlv of
                     Just (s,_) -> do
@@ -868,7 +882,7 @@ chrSolve opts env = slv
                     dbgWaitInfo <- getl $ sndl ^* chrbstWaitForVar
                     -- sque <- getl $ fstl ^* chrgstScheduleQueue
                     -- debug info
-                    let dbg =      "bprio" >#< bprio
+                    dbg $          "bprio" >#< bprio
                                >-< "wk" >#< (work >-< subst `varUpd` workCnstr work)
                                >-< "que" >#< ppBracketsCommas (IntSet.toList waitingWk)
                                >-< "subst" >#< subst
@@ -879,7 +893,6 @@ chrSolve opts env = slv
                                >-< "matches" >#< vlist [ ci >|< ":" >#< ppBracketsCommas wi >#< ":" >#< mbm | FoundWorkMatch ci _ wi mbm <- foundWorkMatches ]
                                -- >-< "prio'd" >#< (vlist $ zipWith (\g ms -> g >|< ":" >#< vlist [ ci >|< ":" >#< ppBracketsCommas wi >#< ":" >#< s | (ci,_,wi,s) <- ms ]) [0::Int ..] foundWorkMatchesFilteredPriod)
                                -- >-< "prio'd" >#< ppAssocL (zip [0::Int ..] $ map ppAssocL foundWorkSortedMatches)
-                    sndl ^* chrbstReductionSteps =$: (SolverReductionDBG dbg :)
 
                     -- pick the first and highest rule prio solution
                     case foundWorkSortedMatches of
@@ -944,8 +957,7 @@ chrSolve opts env = slv
       where
         log alt = do
           let a = (fmap (rbodyaltBody . foundBodyAltAlt) alt)
-          let step = SolveStep chr matchSubst a [] [] -- TODO: Set stepNewTodo, stepNewDone (last two arguments)
-          fstl ^* chrgstTrace =$: (step:)
+          trc $ SolveStep chr matchSubst a [] [] -- TODO: Set stepNewTodo, stepNewDone (last two arguments)
         nextwork bprio alt@(FoundBodyAlt {foundBodyAltAlt=(RuleBodyAlt {rbodyaltBody=body})}) = do
           -- set prio for this alt
           sndl ^* chrbstBacktrackPrio =: bprio
