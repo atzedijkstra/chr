@@ -51,7 +51,7 @@ library
     FlexibleInstances
   -- other-extensions:
   build-depends:
-    base >=4.9 && <4.10,
+    base >=4.9 && < 5,
     array >= 0.3,
     containers >= 0.4,
     hashable >= 1.2.4,

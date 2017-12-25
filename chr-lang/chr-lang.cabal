@@ -37,7 +37,7 @@ library
     FlexibleContexts,
     DeriveGeneric    
   build-depends:
-    base >=4.9 && <4.10,
+    base >=4.9 && < 5,
     containers >= 0.4,
     hashable >= 1.2.4,
     unordered-containers >= 0.2.7,
@@ -57,7 +57,7 @@ executable chr-term
   -- other-extensions:    
 
   build-depends:
-    base >=4.9 && <4.10,
+    base >=4.9 && < 5,
     chr-data >= 0.1.0.0,
     chr-lang >= 0.1.0.0
 
