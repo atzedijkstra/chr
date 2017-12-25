@@ -1,0 +1,65 @@
+:- use_module(library(gensym)).
+
+:- chr_constraint eq(+,+).
+:- chr_constraint eqlist(+,+).
+:- chr_constraint err(+,+,+).
+
+eq(X,X)
+  <=> true
+  pragma priority(1).
+
+eq(con(F,Args1),con(F,Args2))
+  <=> length(Args1,L), length(Args2,L)
+    | eqlist(Args1,Args2)
+  pragma priority(3).
+
+eqlist([],[])
+  <=> true
+  pragma priority(3).
+
+eqlist([A1|R1],[A2|R2])
+  <=> eq(A1,A2), eqlist(R1,R2)
+  pragma priority(3).
+
+eq(con(F,Args1),con(G,Args2))
+  <=> F \= G
+    | err(con(F,Args1),con(G,Args2),different_constructors)
+  pragma priority(3).
+
+eq(con(F,Args1),con(F,Args2))
+  <=> length(Args1,L1), length(Args2,L2), L1 \= L2
+    | err(con(F,Args1),con(F,Args2),different_number_of_args)
+  pragma priority(3).
+
+eq(con(F,Args),var(V))
+  <=> c(var(V),con(F,Args))
+  pragma priority(2).
+
+eq(var(V),var(W))
+  <=> W @< V | eq(var(W),var(V))
+  pragma priority(2).
+
+eq(var(V),con(F,Args))
+  <=> isfvlst(V,Args)
+    | err(var(V),con(_,Args),occurs_check)
+  pragma priority(1).
+
+eq(var(V),X) \ eq(T1,T2)
+  <=> isfv(V,C), subst(V,X,T1,T1_), subst(V,X,T2,T2_)
+    | eq(T1_,T2_)
+  pragma priority(1).
+
+isfv(V, var(V)).
+isfv(V, con(_,Args))
+  :- isfvlst(V, Args).
+isfvlst(V, [A|R])
+  :- isfv(V, A) ; isfvlst(V, R).
+
+subst(V, C, var(V), C).
+subst(V, _, var(W), var(W))
+  :- V \= W.
+subst(V, C, con(F,A), con(F,B))
+  :- substlst(V, C, A, B).
+substlst(_, _, [], []).
+substlst(V, C, [A|R], [B|S])
+  :- subst(V, C, A, B), substlst(V, C, R, S).

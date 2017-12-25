@@ -1,0 +1,16 @@
+-- Test how order of constraints infects run time
+
+reflexivity  @ Leq x y <=> x == y | .
+antisymmetry @ Leq x y , Leq y x <=> x == y.
+idempotence  @ Leq x y \ Leq x y <=> .
+transitivity @ Leq x y , Leq y z ==> Leq x z.
+
+
+-- Inefficient because of order of constraints
+?Leq a c, Leq b a, Leq b c, Leq c b.
+
+-- Same constraints, different order
+-- ?Leq b c, Leq c b, Leq a c, Leq b a.
+
+-- Similar set of rules, but order not important here
+-- ?Leq a b, Leq b a, Leq b c, Leq c b.

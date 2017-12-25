@@ -1,0 +1,45 @@
+-- Pure backtracking example, no use of global vars or priority
+-- Higher queen problems are very slow, can be used for optimizing the solver
+
+{- Performance (MacBook (12", Early 2016), 1,2 GHz Intel Core m5, 8 GB 1867 MHz LPDDR3):
+Queens 4 (2 solutions)
+--------
+real	0m0.589s
+user	0m0.533s
+sys	0m0.038s
+
+Queens 5 (10 solutions)
+--------
+real	0m40.108s
+user	0m38.589s
+sys	0m1.096s
+-}
+
+{-
+-- 4 Queens problem
+queens @ Queens <=> Row 1, Row 2, Row 3, Row 4.
+row @ Row r <=> Queen r 1 \/ Queen r 2 \/ Queen r 3 \/ Queen r 4.
+-}
+
+{-
+-}
+-- 5 Queens problem
+queens @ Queens <=> Row 1, Row 2, Row 3, Row 4, Row 5.
+row @ Row r <=> Queen r 1 \/ Queen r 2 \/ Queen r 3 \/ Queen r 4 \/ Queen r 5.
+
+{-
+-- 6 Queens problem
+queens @ Queens <=> Row 1, Row 2, Row 3, Row 4, Row 5, Row 6.
+row @ Row r <=> Queen r 1 \/ Queen r 2 \/ Queen r 3 \/ Queen r 4 \/ Queen r 5 \/ Queen r 6.
+-}
+
+{-
+-- 8 Queens problem
+queens @ Queens <=> Row 1, Row 2, Row 3, Row 4, Row 5, Row 6, Row 7, Row 8.
+row @ Row r <=> Queen r 1 \/ Queen r 2 \/ Queen r 3 \/ Queen r 4 \/ Queen r 5 \/ Queen r 6 \/ Queen r 7 \/ Queen r 8.
+-}
+
+column @ Queen r1 c1, Queen r2 c2 ==> c1 /= c2.
+diagonal @ Queen r1 c1, Queen r2 c2 ==> Abs (r1 - r2) /= Abs (c1 - c2).
+
+?Queens.

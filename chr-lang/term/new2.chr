@@ -1,0 +1,44 @@
+Eq x x
+  <=> True .
+--  pragma priority(1).
+
+Eq (Con f args1) (Con f args2)
+  <=> Length args1 l, Length args2 l
+    | Eqlist args1 args2 . 
+--  pragma priority(3).
+
+Eqlist [] []
+  <=> True .
+--  pragma priority(3).
+
+Eqlist [a1:r1] [a2:r2]
+  <=> Eq a1 a2, Eqlist r1 r2 .
+--  pragma priority(3).
+
+Eq (Con f args1) (Con g args2)
+  <=> f \= g
+    | ErrDiffCon (Con f args1) (Con g args2) .
+--  pragma priority(3).
+
+Eq (Con f args1) (Con f args2)
+  <=> Length args1 l1, Length args2 l2, l1 \= l2
+    | ErrDiffArgs (Con f args1) (Con f args2) .
+--  pragma priority(3).
+
+Eq (Con f args) (Var v)
+  <=> Eq (Var v) (Con f args) .
+--  pragma priority(2).
+
+Eq (Var v) (Var w)
+  <=> w @< v | Eq (Var w) (Var v) .
+--  pragma priority(2).
+
+Eq (Var v) (Con f args)
+  <=> Isfvlst v args
+    | ErrOccursCheck (Var v) (Con _ args) .
+--  pragma priority(1).
+
+{-Eq (Var v) x \ Eq t1 t2
+  <=> isfv v c, subst v x t1 t1_ subst v x t2 t2_
+    | Eq t1_ t2_ .
+--  pragma priority(1).-}

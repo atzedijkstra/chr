@@ -1,0 +1,8 @@
+-- The classical example
+reflexivity  @ Leq x y <=> x == y | .
+antisymmetry @ Leq x y , Leq y x <=> x == y.
+idempotence  @ Leq x y \ Leq x y <=> .
+transitivity @ Leq x y , Leq y z ==> Leq x z.
+
+?Leq a b, Leq b c, Leq c a.
+

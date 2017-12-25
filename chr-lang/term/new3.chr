@@ -1,0 +1,39 @@
+(,2) :: refl @ Eq x x
+  <=> .
+
+(,1) :: listnil @ Eqlist f allargs1 allargs2 (N) (N)
+  <=> .
+
+(,1) :: listcons @ Eqlist f allargs1 allargs2 (C a1 r1) (C a2 r2)
+  <=> Eq a1 a2, Eqlist f allargs1 allargs2 r1 r2 .
+
+(,1) :: listfail1 @ Eqlist f allargs1 allargs2 (N) (C e es)
+  <=> Err (Con f allargs1) (Con f allargs2) (DifferentNumberOfArguments) .
+
+(,1) :: listfail2 @ Eqlist f allargs1 allargs2 (C e es) (N)
+  <=> Err (Con f allargs1) (Con f allargs2) (DifferentNumberOfArguments) .
+
+(,1) :: tdec @ Eq (Con f args1) (Con f args2)
+  <=> Eqlist f args1 args2 args1 args2 .
+
+(,1) :: tdecfail @ Eq (Con f args1) (Con g args2)
+  <=> f /= g | Err (Con f args1) (Con g args2) (DifferentConstructors) .
+
+(_,2) :: oricon @ Eq (Con f args) (Var v)
+  <=> Eq (Var v) (Con f args) .
+
+(_,2) :: orivar @ Eq (Var v) (Var w)
+  <=> w < v | Eq (Var w) (Var v) .
+
+{- Still to fix
+Eq (Var v) (Con f args)
+  <=> Isfvlst v args
+    | ErrOccursCheck (Var v) (Con _ args) .
+
+Eq (Var v) x \ Eq t1 t2
+  <=> isfv v c, subst v x t1 t1_ subst v x t2 t2_
+    | Eq t1_ t2_ .-}
+
+-- ? Eq ( Con (List) ( C (Con (Int) (N)) (N) ) ) ( Con (List) ( C (Con (Int) (N)) (C (Con (Bool) (N)) (N)) ) )  .
+? Eq (Con (Int) (N)) (Var 1) , Eq (Var 2) (Var 1) .
+-- ? Eq (Con (Int) (N)) (Con (Int) (N)) .

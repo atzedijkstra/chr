@@ -6,6 +6,7 @@ version:             0.1.0.0
 synopsis:            Pretty printing for chr library
 -- description:         
 homepage:            https://github.com/atzedijkstra/chr
+Bug-Reports:         https://github.com/atzedijkstra/chr/issues
 license:             BSD3
 license-file:        LICENSE
 author:              Atze Dijkstra
@@ -15,6 +16,10 @@ category:            Development
 build-type:          Simple
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
+
+source-repository head
+  type:     git
+  location: git@github.com:atzedijkstra/chr.git
 
 library
   exposed-modules:

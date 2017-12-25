@@ -1,0 +1,6 @@
+-- Prioritize backtracking alternatives, the highest rule prio amongst same matches
+-- Here: P 2 first then P 3 (as a second solution, of which the backtrack prio defaults to the current (which is 'p'))
+(p,) :: P 1 <=> (p+1) :: P 2 \/ {- p :: -} P 3.
+
+? P 1.
+

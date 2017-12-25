@@ -1,0 +1,9 @@
+-- Choose deterministically, without backtracking, the highest rule prio amongst same matches
+-- Here: rule 'f', fails (no backtracking so indeed no solutions).
+-- The example also demonstrates that (inherited/current) backtrack prio 'p' can be referred to in rule prio
+(p,p) :: three @ P 1 <=> P 3.
+(p,p+1) :: two @ P 1 <=> P 2.
+(p,p+2) :: f @ P 1 <=> Fail.
+
+? P 1.
+

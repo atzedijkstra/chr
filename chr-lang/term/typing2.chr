@@ -1,0 +1,365 @@
+-- % SYNTAX
+-- % ======
+-- FullConstraint ::= c(Ty, Level)   % Constraint
+--                  | wk(Ty, Level)  % Well-kindedness
+--          Level ::= assume(L) | prove(L)
+-- 
+--           Type ::= Ty : Type   % Type towers
+--                  | *           % End with *
+--                  | constraint  % End with Constraint
+--             Ty ::= var(V)
+--                  | con(C, TypeList)
+--                  | fam(F, TypeList)
+--                  | forall VarTelescope. Ty => Ty
+--                  % Constraints are reified
+--                  | ({VarSet} Ty => Ty) <= Ty
+
+-- ?should it not be: FullConstraint ::= c(Type, Level) 
+
+-- 
+-- We assume the existence of the following constuctors:
+-- - (->) :: * -> * -> *
+-- - (~)  :: k -> k -> constraint
+-- - is   :: k -> k -> l -> constraint
+-- - ()   :: k
+-- - (,)  :: k -> k -> k
+-- So we write a -> b for con((->), [a, b])
+--             a ~  b for con((~), [a, b])
+--             a is b @ c for con(is, [a, b, c])
+--             (a, b) for con((,), [a, b])
+-- 
+
+gamLookupConsYes @ InGamma (x : t) [(y : s) : gamma] <=> x == y | t == s.
+gamLookupConsNo  @ InGamma (x : t) [(y : s) : gamma] <=> x /= y | InGamma (x : t) gamma.
+gamLookupNil     @ InGamma (x : t) []                <=> Fail.
+
+-- % GENERATION
+-- % ==========
+-- 
+
+typingInt @ Typing gamma l (TmInt x) t c <=> t == (Con (Int) [] : Star), c == [].
+
+--
+-- % Expressions
+-- 
+--     x : t \in Gamma
+-- ---------------------- [VAR]
+-- Gamma |-@L x : t ~~> -
+
+typingVar @ Typing gamma l (TmVar x) t c <=> InGamma (x : t) gamma, c == [].
+
+-- 
+-- alpha fresh   A := var(alpha,L) : *   Gamma, x : A |-@L e : t ~~> C
+-- -------------------------------------------------------------------
+--                Gamma |-@L \x. e : A -> t ~~> C
+
+-- ?freshness, piggyback on CHR vars?
+typingLam @ Typing gamma l (TmLam x e) t c
+  <=> Typing [(x : a) : gamma] l e et c
+    , a == (Var alpha l : Star)
+    , t == (a -> et)
+    .
+
+-- 
+--            Gamma, x : s |-@L e : t ~~> C
+-- ----------------------------------------------------
+-- Gamma |-@L \(x :: s). e : s -> t ~~> C, wk(s : *, L)
+
+typingLamA @ Typing gamma l (TmLamA x s e) t [Wk sk l : c]
+  <=> Typing [(x : sk) : gamma] l e et c
+    , t == (s -> et)
+    , sk == (s : Star)
+    .
+
+-- 
+--   alpha, beta fresh   A := var(alpha,L) : *   B := var(beta,L) : *
+--          Gamma |-@L e1 : t1 ~~> C1   Gamma |-@L e2 : t2 ~~> C2
+--                 gs = fv(t2,C2) - fv(Gamma,t1,C1)
+-- ---------------------------------------------------------------------
+-- Gamma |-@L e1 e2 : var(beta,L) ~~> C1, c(t1 <= A -i> B : *, L)
+--                                      , c(({gs} C2 => t2) : * <= A, L)
+
+-- ?Fv
+-- ?{gs} notation
+-- ?Binding of constraints to c1/c2 is lifting from meta to reifiable
+-- ?use of => reserved
+-- ?why the kind annot in constraints
+typingApp @ Typing gamma l (TmApp e1 e2) t c
+  <=> Typing gamma l e1 t1 c1
+    , Typing gamma l e2 t2 c2
+    , a == (Var alpha l : Star)
+    , b == (Var beta  l : Star)
+    , gs == ((Fv t2 `FvUnion` Fv c2) `FvDifference` (Fv gamma `FvUnion` (Fv t1 `FvUnion` Fv c1)))
+    , t == (Var beta l)
+    , c == ([Cn (t1 <= (a ->> b)) l, Cn ((FvAnn gs c2 =>> t2) <=  a) l] ++ c1)
+    .
+
+-- 
+-- 
+-- % Declarations
+-- > We can always put an _ in a type to generate a fresh variable
+-- 
+-- %% top-level functions
+-- 
+--             Gamma, f : s |-0 e : t ~~> C
+-- -----------------------------------------------------
+-- Gamma |- f :: s = e ~~> C, wk(s : *, 0), c(t <= s, 0)
+-- 
+-- %% 'data' and 'newtype' declarations
+-- > The kind of -> ensures that the kind of arguments are *
+-- 
+-- extend Delta with kind(W) ~ K1 -> .. -> Kn -> *
+-- for each Ki :: forall V. Q => T,
+--   Wi := wk((forall V. Q => T) : *, 0)
+-- ---------------------------------------------------------------------
+-- Delta |- data W (a1 :: K1) .. (an :: Kn) where Ki :: forall V. Q => T
+--       ~~> W1, .., Wn
+-- 
+-- %% 'type' declarations
+-- 
+--        extend Delta with kind(T) ~ alpha
+-- ------------------------------------------------
+-- Delta |- type T a1 .. an = T' ~~> wk(T' : alpha)
+-- 
+-- %% 'class' declarations
+-- 
+-- extend Delta with kind(C) ~ K1 -> .. -> Kn -> constraint
+-- for each Mi :: ti,
+--   Wi := wk(ti : *, 0)
+--   if Mi has a default implementation ei then
+--     Gamma |- Mi :: forall a1 .. an. C a1 .. an => ti = ei ~~> Di
+--     Wi := Wi, Di
+-- ----------------------------------------------------------------
+-- Delta |- class Pre => C (a1 :: K1) .. (an :: Kn) where Mi :: ti
+--       ~~> wk(Pre, 0), W1, .., Wn
+-- 
+-- %% 'instance' declarations
+-- 
+-- for each Mi :: si in the definition of C
+--   Gamma |- Mi :: alphai = ei ~~> Di
+--   Wi := c(alphai ~ si @ t1 @ ... @ tn, 0), Di
+-- ----------------------------------------------------------------
+-- Delta |- instance Pre => C t1 .. tn where Mi = ei
+--       ~~> wk(Pre, 0), wk(C t1 .. tn, 0), W1, .., Wn
+-- 
+-- %% 'type family' declarations
+-- 
+-- extend Delta with kind(F) ~ K1 -> .. -> Kn -> R
+-- ----------------------------------------------------
+-- Delta |- type family F (a1 :: K1) .. (an :: Kn) :: R
+-- 
+-- %% 'type instance' declarations
+-- 
+-- -------------------------------------------------------------
+-- Delta |- type instance F t1 .. tn = r ~~> wk(F t1 .. tn ~ r)
+-- 
+-- 
+-- % SOLVING
+-- % =======
+-- 
+-- % Well-kindedness
+-- wk(var(V) : K, L)
+--   <=> wk(K, L).
+
+wkVar @ Wk (Var v : k) l <=> Wk k l.
+
+-- wk(con(C, [A1 : K1, ..., An : Kn]) : K, L)
+--   <=> wk(K, L), c(kind(C) <= K1 -> ... -> Kn -> K, L).
+
+-- ? how to deal with lists generically
+wkCon @ Wk (Con c as : k) l <=> Wk k l, Cn (Kind c <= (as -> k)) l.
+
+-- wk(fam(F, [A1 : K1, ..., An : Kn]) : K, L)
+--   <=> wk(K, L), c(kind(F) <= K1 -> ... -> Kn -> K, L).
+-- wk((forall V. Q => T) : K, L)
+--   <=> L' := extend-level(L), V' := freshen(V, L')
+--     | wk(K, L)
+--     , c(kind([V -> V']Q) <= constraint, L')
+--     , c(kind([V -> V']T) <= K, L').
+-- wk((({V} Q => T) <= S) : K, L)
+--   <=> L' := extend-level(L), V' := freshen(V, L')
+--     | c(K ~ constraint),
+--     , c(kind([V -> V']Q) <= constraint, L')
+--     , c(kind([V -> V']T) <= K, L').
+-- 
+-- % Generic rules
+-- %% Match assume and prove
+-- c(C, assume(L1))
+--     \ c(C, prove(L2))
+--   <=> L1 < L2
+--     | true.
+
+-- ? <= for scope builtin
+-- ? should be LE, not LT
+matchAssPrv @ Cn c (Ass l1) \ Cn c (Prv l2) <=> l1 <= l2 | .
+
+-- %% Substitution
+-- c(Var ~ Sigma, L1)
+--     \ c(C[Var], L2)
+--   <=> L1 < L2, Var \in fv(Type)
+--     | c(C[Sigma]).
+
+-- ? CHR subst needs to be scoped? Back to drawing board?
+-- ? CHR subst and constraint must be aware of their scope? UHC solution for environments...
+-- eqSubst @ Cn (Var v ~ sigma) l1 
+
+-- %%% Note: you might need to restrict applications
+-- %%%       of this rule to guarantee termination.
+-- %% With Constraint kind
+-- c(() : constraint, L)
+--   <=> true.
+-- c((Q1,Q2) : constraint, L)
+--   <=> c(Q1, L), c(Q2, L).
+-- 
+-- % Equality
+-- %% Reflexivity
+-- c(X ~ X, L)
+--   <=> true.
+
+eqRefl @ Cn (x ~ x) l <=> .
+
+-- %% Orientation
+-- c(X ~ Y, L)
+--   <=> Y << X | c(Y ~ X, L).
+
+eqOrient @ Cn (x ~ y) l <=> y << x | Cn (y ~ x) l.
+
+-- %% Type deconstruction
+-- c(con(C, [A1, ..., An]) : R1 ~ con(C, [B1, ..., Bn]) : R2, L)
+--   <=> c(A1 ~ B1, L), ..., c(An ~ Bn, L).
+-- c(con(C, As) : K1 ~ con(D, Bs) : K2, L)
+--   <=> C =/= D
+--     | false.
+-- %% Occurs check
+-- c(Var ~ con(C, As) : K, K)
+--   <=> Var \in fv(As)
+--     | false.
+
+-- ? occur check must be delayed, too expensive: UHC solution is to detect lookup loops, break them, report them
+
+-- %% Forall types
+-- c((forall V. Q => T1) : K1 ~ (forall V. Q => T2) : K2, L)
+--   <=> L' := extend-level(L), V' := freshen(V, L')
+--     | c([V -> V']Q, assume(L'))
+--     , c([V -> V']T1 : K1 ~ [V -> V']T2 : K2, prove(L')).
+-- c((forall V. Q => T) : K1 ~ con(C, Args) : K2, L)
+--   <=> false.
+-- 
+-- % Instantiation constraints
+-- c(X <= X, L)
+--   <=> true.
+-- c(X <= (forall V. Q => T) : K2)
+--   <=> L' := extend-level(L), V' := freshen(V, L')
+--     | c([V -> V']Q, assume(L'))
+--     , c(X <= [V -> V']T : K2, prove(L')).
+-- c(con(->, [S1,T1]) : * <= con(->, [S2,T2]) : *, L)
+--   <=> con(S2 <= S1, L), con(T1 <= T2, L).
+-- > plus two special rules for invariant arrows
+-- c(con(F,A) : K1 <= con(G,B) : K2, L)
+--   <=> F =/= (->), G =/= (->)
+--     | c(con(F,A) : K1 ~ con(G,B) : K2, L)
+-- c((forall V. Q => T) : K1 <= con(G,B) : K2, L)
+--   <=> V' := freshen(V, L')
+--     | c([V -> V']Q, L)
+--     , c([V -> V']T : K1 <= con(G,B) : K2, L).
+-- 
+-- % Visible type application
+-- c(X is con(F, As) @ Y, L)
+--   <=> false.
+-- c(X is (forall as (b : K). Q => T) @ Y : K', L)
+--   <=> c(K ~ K', L)
+--     , c(X ~ (forall as. [b -> Y]Q => [b -> Y]T), L).
+-- 
+-- % Type families
+-- %% Substitution
+-- c(fam(F, As) ~ Sigma, L1)
+--     \ c(C[fam(F, As)], L2)
+--   <=> L1 < L2, Var \in fv(Type)
+--     | c(C[Sigma]).
+-- %% Generated rules
+-- > For every type family instance
+-- >   F t1 ... tn = r
+-- > we generate a rule of the form:
+-- c(fam(F, [t1', ..., tn']) : K1 ~ X : K2, L)
+--   <=> c(r' : K1 ~ X : K2, L)
+-- > where the ' types substitute variables
+-- > by metavariables from underlying CHR.
+-- %% Closed type families
+-- > Similar to type families, but in every
+-- > step we add apartness checks from all
+-- > the previous cases.
+-- > For example,
+-- >   type family Eq a b :: Bool where
+-- >     Eq a a = True
+-- >     Eq a b = False
+-- > turns into:
+-- > c(fam(Eq, [X,X]) : K1 ~ Z : K2, L)
+-- >   <=> c(True : K1 ~ Z : K2, L).
+-- > c(fam(Eq, [X,Y]) : K1 ~ Z : K2, L)
+-- >   <=> apart(X, Y)
+-- >     | c(False : K1 ~ Z : K2, L).
+-- 
+-- % Type classes
+-- > For every class declaration
+-- >   class Pre => C a1 ... an
+-- > we generate a rule of the form:
+-- c(C X1 ... Xn, L)
+--    => c([a -> X]Pre, L).
+-- > For every instance declaration
+-- >   instance Pre => C t1 ... tn
+-- > we generate a rule of the form:
+-- c(C t1' ... tn', L)
+--   <=> c(Pre', L).
+-- > where the ' types substitute variables
+-- > by metavariables from underlying CHR.
+-- %% Overlapping instances
+-- > When overlapping instances enter the
+-- > game we cannot guarantee <=> for the
+-- > instance case, just =>.
+-- 
+-- % Injectivity and functional dependencies
+-- > For every functional dependency in a class
+-- >   class Pre => C a1 ... an | a(i1) ... a(in) -> a(i)
+-- > we generate a rule of the form:
+-- c(C X1 ... Xn, L1) \ c(C Y1 ... Yn, L2)
+--    => L1 <= L2
+--     | c(Xi ~ Yi, L2).
+-- > where Xj and Yj are different if they are not
+-- > mentioned in the rule, and equal if they are.
+-- > For example, from the class declaration:
+-- >   class Coll c e | c -> e
+-- > we get the rule:
+-- > c(C c e1, L1) \ c(C c e2, L2)
+-- >    => L1 <= L2 | c(e1 ~ e2, L2).
+-- > This works the same for injectivity conditions
+-- > appearing in type families.
+-- %% Improvement
+-- > If there is a functional dependency
+-- >   a(i1) ... a(in) -> a(i)
+-- > for each instance declaration
+-- >   instance Pre => C t1 ... tn
+-- > we generate a rule of the form:
+-- c(C t1' ... tn', L)
+--    => c(Xi ~ ti', L).
+-- > where ti' are either:
+-- > - metavariables if the i is not in the LHS
+-- >   of the functional dependency
+-- > - the types in the instance whose variables
+-- >   are replaced by metavariables if they appear
+-- > For example, from the `Coll` instance:
+-- >   instance Coll [e] e
+-- > we get a rule:
+-- > c(Coll [X] Y, L)
+-- >   <=> c(Y ~ X, L).
+-- 
+-- % Local instances
+-- > We just need to add conditions over the levels,
+-- > so that the rules are only applied if we are
+-- > inside the level where the instance is available.
+-- 
+-- % Defaulting
+-- > To be applied once we are stuck in solving.
+
+? Typing [] (LevZero) (TmApp (TmLam "x" (TmVar "x")) (TmInt 1)) t c.
+-- ? Typing [] (LevZero) (TmInt 1) t c.
+-- ? Dummy .

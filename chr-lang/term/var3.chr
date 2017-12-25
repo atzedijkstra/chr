@@ -1,0 +1,13 @@
+{-
+-- multiple var, waiting for 2 var resolutions
+P 1 5 <=> P 2 5.
+Q x y <=> x == y.
+
+?P a b, Q 1 a, Q 5 b.
+-}
+
+
+-- multiple head, multiple var (TBD 20160413: does not work)
+P 1, Q 3 <=> R 2.
+
+?P a, Q b.

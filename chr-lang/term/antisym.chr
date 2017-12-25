@@ -1,0 +1,5 @@
+antisym @ Eq x y, Eq y x <=> x == y, Eq x x.
+-- (p,) :: antisym @ Eq x y, Eq y x <=> p+1 :: x == y.
+
+? Eq 1 a, Eq a 1.
+

@@ -1,0 +1,18 @@
+-- From: http://chr.informatik.uni-ulm.de/~webchr/
+cleanup @ Gcd 0 <=> .
+Gcd n \ Gcd m <=> 0 < n, n <= m | l == (m `Mod` n), Gcd l.  -- logarithmic complexity
+
+{-
+Q: gcd(2), gcd(3).
+A: gcd(1).
+
+Q: gcd(12), gcd(27).
+A: gcd(3).
+
+Q: gcd(94017), gcd(1155), gcd(2035).
+A: gcd(11).
+-}
+
+?Gcd(94017), Gcd(1155), Gcd(2035).
+-- ?Gcd 2, Gcd 3.
+-- ?Gcd 0.

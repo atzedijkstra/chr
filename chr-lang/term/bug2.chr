@@ -1,0 +1,5 @@
+(,2) :: checkequalnil  @ Eq [] [] <=> .
+(,2) :: checkequalcons @ Eq [x : ys] [x : zs] <=> Eq ys zs.
+(,1) :: checkequalbad  @ Eq [x : xs] [y : ys] <=> Error.
+
+? Eq [1] [2].
