@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ScopedTypeVariables, StandaloneDeriving, TypeFamilies, MultiParamTypeClasses, PatternGuards, GADTs #-}
+{-# LANGUAGE CPP, ScopedTypeVariables, StandaloneDeriving, TypeFamilies, MultiParamTypeClasses, PatternGuards, GADTs, ConstraintKinds #-}
 
 -------------------------------------------------------------------------------------------
 --- TreeTrie, variation which allows matching on subtrees marked as a variable (kind of unification)
@@ -43,6 +43,7 @@ module CHR.Data.TreeTrie
   
     -- * TreeTrie
   , TreeTrie
+  , TTCtxt
   , emptyTreeTrie
   , empty
   , toListByKey, toList
@@ -76,10 +77,11 @@ import           GHC.Generics
 import           Control.Monad
 
 import           CHR.Utils
+import qualified CHR.Data.Lookup            as Lk
 
 -- import           UHC.Util.Serialize
-import           CHR.Pretty            hiding (empty)
-import qualified CHR.Pretty            as PP
+import           CHR.Pretty                 hiding (empty)
+import qualified CHR.Pretty                 as PP
 -- import           CHR.Data.AssocL
 import qualified CHR.Data.FastSeq           as Seq
 
@@ -252,6 +254,8 @@ prekey1With2Children k c1 c2 = PreKey1 k (PreKey1Cont2 c1 c2)
 type TreeTrieChildren k v
   = Map.Map (Key1 k) (TreeTrie k v)
 
+type TTCtxt a = (Ord a)
+
 -- | The trie structure, branching out on (1) kind, (2) nr of children, (3) actual key
 data TreeTrie k v
   = TreeTrie
@@ -260,15 +264,15 @@ data TreeTrie k v
       }
  deriving (Typeable)
 
-emptyTreeTrie, empty :: TreeTrie k v
-emptyTreeTrie = TreeTrie Nothing Map.empty
+emptyTreeTrie, empty :: TTCtxt k => TreeTrie k v
+emptyTreeTrie = TreeTrie Nothing Lk.empty
 
 empty = emptyTreeTrie
 
-instance (Show k, Show v) => Show (TreeTrie k v) where
+instance (TTCtxt k, Show k, Show v) => Show (TreeTrie k v) where
   showsPrec _ t = showList $ toListByKey t
 
-instance (PP k, PP v) => PP (TreeTrie k v) where
+instance (TTCtxt k, PP k, PP v) => PP (TreeTrie k v) where
   pp t = ppBracketsCommasBlock $ map (\(a,b) -> a >#< ":" >#< b) $ toListByKey t
 
 -------------------------------------------------------------------------------------------
@@ -277,17 +281,17 @@ instance (PP k, PP v) => PP (TreeTrie k v) where
 
 -- Reconstruction of original key-value pairs.
 
-toFastSeqSubsWith :: (Key k -> v -> v') -> TreeTrieChildren k v -> Seq.FastSeq v'
+toFastSeqSubsWith :: TTCtxt k => (Key k -> v -> v') -> TreeTrieChildren k v -> Seq.FastSeq v'
 toFastSeqSubsWith mk ttries
   = mconcat
       [ toFastSeqWith (\(Key ks) v -> mk (Key $ k:ks) v) True t
-      | (k,t) <- Map.toList ttries
+      | (k,t) <- Lk.toList ttries
       ]
 
-toFastSeqSubs :: TreeTrieChildren k v -> Seq.FastSeq (Key k, v)
+toFastSeqSubs :: TTCtxt k => TreeTrieChildren k v -> Seq.FastSeq (Key k, v)
 toFastSeqSubs = toFastSeqSubsWith (,)
 
-toFastSeqWith :: (Key k -> v -> v') -> Bool -> TreeTrie k v -> Seq.FastSeq v'
+toFastSeqWith :: TTCtxt k => (Key k -> v -> v') -> Bool -> TreeTrie k v -> Seq.FastSeq v'
 toFastSeqWith mk inclEmpty ttrie
   =           (case ttrieMbVal ttrie of
                  Just v | inclEmpty -> Seq.singleton $ mk (Key []) v
@@ -295,10 +299,10 @@ toFastSeqWith mk inclEmpty ttrie
               )
     `mappend` toFastSeqSubsWith mk (ttrieSubs ttrie)
 
-toFastSeq :: Bool -> TreeTrie k v -> Seq.FastSeq (Key k, v)
+toFastSeq :: TTCtxt k => Bool -> TreeTrie k v -> Seq.FastSeq (Key k, v)
 toFastSeq = toFastSeqWith (,)
 
-toListByKey, toList :: TreeTrie k v -> [(Key k,v)]
+toListByKey, toList :: TTCtxt k => TreeTrie k v -> [(Key k,v)]
 toListByKey = Seq.toList . toFastSeq True
 
 toList = toListByKey
@@ -326,7 +330,7 @@ lookupWith :: Ord k => (Key k -> v -> v') -> Key k -> TreeTrie k v -> LkRes v'
 lookupWith mkRes keys ttrie = case unKey keys of
     [] -> (mempty, toFastSeqWith mkRes True ttrie, fmap (mkRes $ Key []) $ ttrieMbVal ttrie)
     (k : ks)
-       -> case Map.lookup k $ ttrieSubs ttrie of
+       -> case Lk.lookup k $ ttrieSubs ttrie of
             Just ttrie'
               -> (pp `mappend` p, s, m)
               where (p, s, m) = lookupWith (\(Key ks) v -> mkRes (Key (k : ks)) v) (Key ks) ttrie'
@@ -347,12 +351,12 @@ lookupResultToList (p,s,mv) = maybeToList mv ++ Seq.toList (p `mappend` s)
 -------------------------------------------------------------------------------------------
 
 
-isEmpty :: TreeTrie k v -> Bool
+isEmpty :: TTCtxt k => TreeTrie k v -> Bool
 isEmpty ttrie
   =  isNothing (ttrieMbVal ttrie)
-  && Map.null  (ttrieSubs ttrie)
+  && Lk.null  (ttrieSubs ttrie)
 
-null :: TreeTrie k v -> Bool
+null :: TTCtxt k => TreeTrie k v -> Bool
 null = isEmpty
 
 -------------------------------------------------------------------------------------------
@@ -362,8 +366,8 @@ null = isEmpty
 singleton :: Ord k => Key k -> v -> TreeTrie k v
 singleton (Key keys) val
   = s keys
-  where s []       = TreeTrie (Just val) Map.empty
-        s (k : ks) = TreeTrie Nothing (Map.singleton k $ singleton (Key ks) val) 
+  where s []       = TreeTrie (Just val) Lk.empty
+        s (k : ks) = TreeTrie Nothing (Lk.singleton k $ singleton (Key ks) val) 
 
 singletonKeyable :: (Ord (TrTrKey v),TreeTrieKeyable v) => v -> TreeTrie (TrTrKey v) v
 singletonKeyable val = singleton (toTreeTrieKey val) val
@@ -376,7 +380,7 @@ unionWith :: Ord k => (v -> v -> v) -> TreeTrie k v -> TreeTrie k v -> TreeTrie 
 unionWith cmb t1 t2
   = TreeTrie
       { ttrieMbVal       = mkMb          cmb             (ttrieMbVal t1) (ttrieMbVal t2)
-      , ttrieSubs        = Map.unionWith (unionWith cmb) (ttrieSubs  t1) (ttrieSubs  t2)
+      , ttrieSubs        = Lk.unionWith (unionWith cmb) (ttrieSubs  t1) (ttrieSubs  t2)
       }
   where mkMb _   j         Nothing   = j
         mkMb _   Nothing   j         = j

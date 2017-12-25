@@ -42,6 +42,7 @@ class Lookup c k v | c -> k, c -> v where
   toList        :: c -> [(k,v)]
   -- properties
   null          :: c -> Bool
+  size          :: c -> Int
   -- update catchall
   alter         :: (Maybe v -> Maybe v) -> k -> c -> c
  
@@ -75,6 +76,7 @@ class Lookup c k v | c -> k, c -> v where
   keysSet               = Set.fromList . keys
   elems                 = List.map snd . toList
   map f                 = fromList . List.map (second f) . toList
+  null c                = size c == 0
 
 -- | Default for 'alter' when 'lookup', 'insert' (or 'inserWith'), and 'delete' are defined
 alterDefault :: Lookup c k v => (Maybe v -> Maybe v) -> k -> c -> c

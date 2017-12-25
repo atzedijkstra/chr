@@ -24,12 +24,14 @@ import           Data.Typeable
 import           GHC.Generics
 import           Control.Monad.Except
 import           Control.Monad.State
-import qualified Data.Map                   as Map
+-- import qualified Data.Map                   as Map
+import qualified Data.HashMap.Strict        as MapH
 
 import           CHR.Pretty                 as PP
 import           CHR.Utils
 import           CHR.Data.Lens
 import           CHR.Types
+import qualified CHR.Data.Lookup            as Lk
 -- import           CHR.Types.Core
 
 -------------------------------------------------------------------------------------------
@@ -113,7 +115,7 @@ class GTermAs cnstr guard bprio prio tm
 
 --
 gtermasVar :: String -> GTermAsM IVar
-gtermasVar s = modL gtermasNmToVarMp $ \m -> maybe (let i = Map.size m in (i, Map.insert s i m)) (,m) $ Map.lookup s m
+gtermasVar s = modL gtermasNmToVarMp $ \m -> maybe (let i = Lk.size m in (i, Lk.insert s i m)) (,m) $ Lk.lookup s m
   
   -- insertLookupWithKey :: Ord k => (k -> a -> a -> a) -> k -> a -> Map k a -> (Maybe a, Map k a)
 

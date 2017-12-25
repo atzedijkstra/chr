@@ -39,6 +39,8 @@ library
   build-depends:
     base >=4.9 && <4.10,
     containers >= 0.4,
+    hashable >= 1.2.4,
+    unordered-containers >= 0.2.7,
     fgl >= 5.4,
     mtl >= 2,
     time >= 1.2,

@@ -54,6 +54,8 @@ library
     base >=4.9 && <4.10,
     array >= 0.3,
     containers >= 0.4,
+    hashable >= 1.2.4,
+    unordered-containers >= 0.2.7,
     mtl >= 2,
     -- fclabels >= 2.0.3,
     microlens >= 0.4,

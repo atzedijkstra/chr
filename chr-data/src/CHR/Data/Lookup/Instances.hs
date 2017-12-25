@@ -13,8 +13,10 @@ module CHR.Data.Lookup.Instances
 -------------------------------------------------------------------------------------------
 import qualified Data.IntMap                as IMap
 import qualified Data.Map                   as Map
+import qualified Data.HashMap.Strict        as MapH
 import qualified Data.Set                   as Set
 import qualified CHR.Data.VecAlloc          as VAr
+import           Data.Hashable
 import           Data.Array.IArray          as IAr
 import           CHR.Data.Lookup.Types
 -------------------------------------------------------------------------------------------
@@ -32,6 +34,7 @@ instance Ord k => Lookup (Map.Map k v) k v where
   fromList          = Map.fromList
   toList            = Map.toList
   null              = Map.null
+  size              = Map.size
   alter             = Map.alter
   
   -- optional
@@ -45,6 +48,29 @@ instance Ord k => Lookup (Map.Map k v) k v where
   elems             = Map.elems
   map               = Map.map
 
+instance (Eq k, Hashable k) => Lookup (MapH.HashMap k v) k v where
+  lookup            = MapH.lookup
+  {-
+  findMin           = Map.findMin
+  findMax           = Map.findMax
+  -}
+  fromList          = MapH.fromList
+  toList            = MapH.toList
+  null              = MapH.null
+  size              = MapH.size
+  alter             = MapH.alter
+  
+  -- optional
+  unionWith         = MapH.unionWith
+  insertWith        = MapH.insertWith
+  delete            = MapH.delete
+  singleton         = MapH.singleton
+  empty             = MapH.empty
+  keys              = MapH.keys
+  -- keysSet           = MapH.keysSet
+  elems             = MapH.elems
+  map               = MapH.map
+
 instance Lookup (IMap.IntMap v) IMap.Key v where
   lookup            = IMap.lookup
   {-
@@ -54,6 +80,7 @@ instance Lookup (IMap.IntMap v) IMap.Key v where
   fromList          = IMap.fromList
   toList            = IMap.toList
   null              = IMap.null
+  size              = IMap.size
   alter             = IMap.alter
 
   -- optional

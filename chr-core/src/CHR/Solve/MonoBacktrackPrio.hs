@@ -68,8 +68,8 @@ import           CHR.Data.VarLookup
 
 import qualified Data.Set                                       as Set
 import qualified Data.PQueue.Prio.Min                           as Que
--- import qualified Data.Map                                       as Map
 import qualified Data.Map.Strict                                as Map
+import qualified Data.HashMap.Strict                            as MapH
 import qualified Data.IntMap.Strict                             as IntMap
 import qualified Data.IntSet                                    as IntSet
 import qualified Data.Sequence                                  as Seq
@@ -82,7 +82,7 @@ import           Control.Monad.Except
 import           Control.Monad.State.Strict
 import           Control.Monad.LogicState
 
-import           CHR.Pretty                                as Pretty
+import           CHR.Pretty                                     as Pretty
 -- import           UHC.Util.Serialize
 import           CHR.Types.Core
 import           CHR.Types.Rule
@@ -143,7 +143,7 @@ data CHRStore cnstr guard bprio prio
       }
   deriving (Typeable)
 
-emptyCHRStore :: CHRStore cnstr guard bprio prio
+emptyCHRStore :: TT.TTCtxt (TT.TrTrKey cnstr) => CHRStore cnstr guard bprio prio
 emptyCHRStore = CHRStore TT.empty IntMap.empty
 
 -------------------------------------------------------------------------------------------
@@ -161,7 +161,7 @@ data WorkStore cnstr
       }
   deriving (Typeable)
 
-emptyWorkStore :: WorkStore cnstr
+emptyWorkStore :: TT.TTCtxt (TT.TrTrKey cnstr) => WorkStore cnstr
 emptyWorkStore = WorkStore TT.empty IntMap.empty
 
 data WorkQueue
@@ -251,11 +251,11 @@ data CHRGlobState cnstr guard bprio prio subst env m
       , _chrgstScheduleQueue         :: !(Que.MinPQueue (CHRPrioEvaluatableVal bprio) (CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m (SolverResult subst)))
       , _chrgstTrace                 :: SolveTrace' cnstr (StoredCHR cnstr guard bprio prio) subst
       , _chrgstStatNrSolveSteps      :: !Int
-      , _chrgstVarToNmMp             :: VarToNmMp
+      , _chrgstVarToNmMp             :: !VarToNmMp
       }
   deriving (Typeable)
 
-emptyCHRGlobState :: CHRGlobState c g b p s e m
+emptyCHRGlobState :: TT.TTCtxt (TT.TrTrKey c) => CHRGlobState c g b p s e m
 emptyCHRGlobState = CHRGlobState emptyCHRStore 0 emptyWorkStore initWorkTime Que.empty emptySolveTrace 0 emptyVarToNmMp
 
 -- | Backtrackable state

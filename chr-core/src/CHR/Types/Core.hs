@@ -85,8 +85,9 @@ import           CHR.Data.VarMp
 import           CHR.Data.Lookup            (Lookup, Stacked, LookupApply)
 import qualified CHR.Data.Lookup            as Lk
 import qualified CHR.Data.Lookup.Stacked    as Lk
-import qualified Data.Map                   as Map
-import qualified Data.IntMap                as IntMap
+import qualified Data.Map.Strict            as Map
+import qualified Data.HashMap.Strict        as MapH
+import qualified Data.IntMap.Strict         as IntMap
 import           Data.Word
 import           Data.Monoid
 import           Data.Typeable
@@ -97,7 +98,7 @@ import           CHR.Pretty
 -- import           UHC.Util.CHR.Key
 import qualified CHR.Data.TreeTrie          as TT
 import           Control.Monad
-import           Control.Monad.State.Strict
+import           Control.Monad.State -- .Strict
 import           Control.Monad.Except
 import           Control.Monad.Identity
 import           CHR.Data.Lens
@@ -115,10 +116,10 @@ import           CHR.Data.Substitutable
 type IVar      = IntMap.Key
 
 type VarToNmMp = IntMap.IntMap   String
-type NmToVarMp = Map.Map         String  IVar
+type NmToVarMp = MapH.HashMap    String  IVar
 
 emptyVarToNmMp :: VarToNmMp = IntMap.empty
-emptyNmToVarMp :: NmToVarMp = Map.empty
+emptyNmToVarMp :: NmToVarMp = MapH.empty
 
 -------------------------------------------------------------------------------------------
 --- CHRMatchHow

@@ -86,8 +86,8 @@ module CHR.Data.VarMp
   where
 
 import           Data.List
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+import qualified Data.Map                   as Map
+import qualified Data.Set                   as Set
 import           Data.Maybe
 import           CHR.Pretty
 import           CHR.Data.AssocL

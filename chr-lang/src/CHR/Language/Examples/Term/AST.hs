@@ -41,6 +41,7 @@ import qualified CHR.Solve.MonoBacktrackPrio  as MBP
 import           Data.Typeable
 import           Data.Maybe
 import qualified Data.Map                                       as Map
+import qualified Data.HashMap.Strict                            as MapH
 import qualified Data.IntMap                                    as IntMap
 import qualified Data.Set                                       as Set
 import qualified Data.List                                      as List
@@ -223,6 +224,7 @@ instance Bounded P where
 
 -- type S = IntMap.IntMap Tm
 type S = Map.Map Var Tm
+-- type S = MapH.HashMap Var Tm
 -- type S = VAr.VecAlloc Tm
 -- type S = Lk.DefaultScpsLkup Var Tm
 
