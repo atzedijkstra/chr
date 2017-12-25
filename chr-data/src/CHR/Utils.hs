@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeOperators, TypeSynonymInstances, FlexibleInstances, DefaultSignatures, UndecidableInstances #-}
 
+{-| Various utils. Relic of the past, requires adaption to newer general purpose libs
+ -}
+
 module CHR.Utils
   ( 
     -- * Set
@@ -8,110 +11,110 @@ module CHR.Utils
 
     -- * Map
   , inverseMap
-  -- , showStringMapKeys
-  -- 
-  -- , mapLookup2', mapLookup2
-  -- 
+  , showStringMapKeys
+  
+  , mapLookup2', mapLookup2
+  
     -- * List
-  -- , hdAndTl', hdAndTl
-  -- , maybeNull
+  , hdAndTl', hdAndTl
+  , maybeNull
   , maybeHd
-  -- , wordsBy
-  -- , initlast, initlast2
-  -- , last'
-  -- , firstNotEmpty
-  -- , listSaturate, listSaturateWith
-  -- , spanOnRest
-  -- , filterMb
+  , wordsBy
+  , initlast, initlast2
+  , last'
+  , firstNotEmpty
+  , listSaturate, listSaturateWith
+  , spanOnRest
+  , filterMb
   , splitPlaces
   , combineToDistinguishedEltsBy
-  -- , partitionOnSplit
+  , partitionOnSplit
   , zipWithN
-  -- 
-  --   -- * Tuple
-  -- , tup123to1, tup123to2
-  -- , tup123to12, tup123to23
-  -- , tup12to123
-  -- 
-  -- , fst3
-  -- , snd3
-  -- , thd3
-  -- , thd 
-  -- 
-  -- , tup1234to1  
-  -- , tup1234to2  
-  -- , tup1234to3  
-  -- , tup1234to4  
-  -- 
-  -- , tup1234to12
-  -- , tup1234to13
-  -- , tup1234to14
-  -- , tup1234to23
-  -- , tup1234to24
-  -- , tup1234to34
-  -- 
-  -- , tup1234to123
-  -- , tup1234to234
-  -- 
-  -- , tup1234to124
-  -- , tup1234to134
-  -- 
-  -- , tup123to1234
--- 
-  -- , fst4
-  -- , snd4
-  -- , thd4
-  -- , fth4
-  -- , fth 
-  -- 
-  --   -- * String
-  -- , strWhite
-  -- , strPad
-  -- , strCapitalize
-  -- , strToLower
-  -- , strToInt
-  -- 
-  -- , splitForQualified
-  -- 
-  --   -- * Show utils
-  -- , showUnprefixedWithShowTypeable
-  -- , DataAndConName(..)
-  -- , showUnprefixed
-  -- 
-  --   -- * Ordering
+  
+    -- * Tuple
+  , tup123to1, tup123to2
+  , tup123to12, tup123to23
+  , tup12to123
+  
+  , fst3
+  , snd3
+  , thd3
+  , thd 
+  
+  , tup1234to1  
+  , tup1234to2  
+  , tup1234to3  
+  , tup1234to4  
+  
+  , tup1234to12
+  , tup1234to13
+  , tup1234to14
+  , tup1234to23
+  , tup1234to24
+  , tup1234to34
+  
+  , tup1234to123
+  , tup1234to234
+  
+  , tup1234to124
+  , tup1234to134
+  
+  , tup123to1234
+ 
+  , fst4
+  , snd4
+  , thd4
+  , fth4
+  , fth 
+  
+    -- * String
+  , strWhite
+  , strPad
+  , strCapitalize
+  , strToLower
+  , strToInt
+  
+  , splitForQualified
+  
+    -- * Show utils
+  , showUnprefixedWithShowTypeable
+  , DataAndConName(..)
+  , showUnprefixed
+  
+    -- * Ordering
   , orderingLexic
-  -- , orderingLexicList
-  -- 
-  --   -- * Misc
+  , orderingLexicList
+  
+    -- * Misc
   , panic
-  -- 
-  -- , isSortedByOn
-  -- , sortOnLazy
-  -- , sortOn
+  
+  , isSortedByOn
+  , sortOnLazy
+  , sortOn
   , sortByOn
-  -- , groupOn
-  -- , groupByOn
+  , groupOn
+  , groupByOn
   , groupSortOn
-  -- , groupSortByOn
-  -- , nubOn
-  -- 
-  -- , consecutiveBy
-  -- 
-  -- , partitionAndRebuild
-  -- 
+  , groupSortByOn
+  , nubOn
+  
+  , consecutiveBy
+  
+  , partitionAndRebuild
+  
     -- * Maybe
   , panicJust
-  -- , ($?)
-  -- , orMb
-  -- , maybeAnd
-  -- , maybeOr
-  -- 
-  --   -- * Graph
+  , ($?)
+  , orMb
+  , maybeAnd
+  , maybeOr
+  
+    -- * Graph
   -- , scc
-  -- 
-  --   -- * Monad
-  -- , firstMaybeM
-  -- , breakM
+  
+    -- * Monad
+  , firstMaybeM
+  , breakM
   )
   where
 

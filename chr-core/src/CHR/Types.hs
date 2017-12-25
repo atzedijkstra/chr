@@ -8,24 +8,14 @@ module CHR.Types
   ( module CHR.Types.Core
   , module CHR.Data.TreeTrie
   
-  -- CHRTrie'
-  -- , CHRTrieKey
--- 
-  -- , chrToKey
-  -- , chrToWorkKey
--- 
-  -- , CHRKey
-  , CHRKey2
--- 
+  , CHRKey
+
   , WorkTime
   , initWorkTime
-  -- 
-  -- , WorkKey
-  -- , WorkKey2
+
   , Work'(..)
-  -- , Work
-  , Work2
-  -- 
+  , Work
+
   , SolveStep'(..)
   , SolveTrace'
   , emptySolveTrace
@@ -33,8 +23,7 @@ module CHR.Types
   )
   where
 
--- import           CHR.Data.CHR.Key
-import qualified CHR.Data.TreeTrie          as TT2
+import qualified CHR.Data.TreeTrie          as TT
 import           CHR.Data.TreeTrie          ( TrTrKey )
 
 import           CHR.Pretty                 as Pretty
@@ -61,38 +50,11 @@ import           CHR.Types.Core             ( IVar
 import qualified Data.Map                   as Map
 
 -------------------------------------------------------------------------------------------
---- Choice of Trie structure
--------------------------------------------------------------------------------------------
-
--- type CHRTrie'  k v = TreeTrie.TreeTrie  (TTKey k) v
--- -- type CHRTrie2' k v = TreeTrie2.TreeTrie (TreeTrie2.TrTrKey k) v
--- type CHRTrieKey  v = TreeTrie.TreeTrieKey  (TTKey v)
--- -- type CHRTrieKey2 v = TreeTrie2.TreeTrieKey (TTKey v)
-
--- -- | Obtain key for use in rule
--- chrToKey :: (TTKeyable x, TrTrKey x ~ TTKey x) => x -> CHRTrieKey x
--- chrToKey = ttkFixate . toTTKey
--- {-# INLINE chrToKey #-}
-
-{-
--- | Obtain key for use in rule
-chrToKey2 :: (TT2.TreeTrieKeyable x) => x -> TT2.Key (TT2.TrTrKey x)
-chrToKey2 = toTreeTrieKey
-{-# INLINE chrToKey2 #-}
--}
-
--- -- | Obtain key for use in to be solved context (i.e. work)
--- chrToWorkKey :: (TTKeyable x) => x -> CHRTrieKey x
--- chrToWorkKey = ttkFixate . toTTKey' (defaultTTKeyableOpts {ttkoptsVarsAsWild = False})
--- {-# INLINE chrToWorkKey #-}
-
--------------------------------------------------------------------------------------------
 --- CHR key
 -------------------------------------------------------------------------------------------
 
 -- | Convenience alias for key into CHR store
--- type CHRKey  v = CHRTrieKey v
-type CHRKey2 v = TT2.Key (TT2.TrTrKey v)
+type CHRKey v = TT.Key (TT.TrTrKey v)
 
 -------------------------------------------------------------------------------------------
 --- WorkTime, the time/history counter for solver work
@@ -108,8 +70,7 @@ initWorkTime = 0
 --- Solver work and/or residual (non)work
 -------------------------------------------------------------------------------------------
 
--- type WorkKey       v = CHRKey  v
-type WorkKey2      v = CHRKey2 v
+type WorkKey      v = CHRKey v
 
 -- | A chunk of work to do when solving, a constraint + sequence nr
 data Work' k c
@@ -126,11 +87,9 @@ data Work' k c
       }
   | Work_Fail
 
--- type Work  c = Work' (WorkKey  c) c
-type Work2 c = Work' (WorkKey2 c) c
+type Work c = Work' (WorkKey c) c
 
--- type instance TTKey       (Work' k c) = TTKey       c
-type instance TT2.TrTrKey (Work' k c) = TT2.TrTrKey c
+type instance TT.TrTrKey (Work' k c) = TT.TrTrKey c
 
 instance Show (Work' k c) where
   show _ = "SolveWork"

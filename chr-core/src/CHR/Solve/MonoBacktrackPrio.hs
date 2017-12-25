@@ -54,40 +54,8 @@ module CHR.Solve.MonoBacktrackPrio
   , slvFreshSubst
   
   , getSolveTrace
-  
-{-
-  ( CHRStore
-  , emptyCHRStore
-  
-  , chrStoreFromElems
-  , chrStoreUnion
-  , chrStoreUnions
-  , chrStoreSingletonElem
-  , chrStoreToList
-  , chrStoreElems
-  
-  , ppCHRStore
-  , ppCHRStore'
-  
-  , SolveStep'(..)
-  , SolveStep
-  , SolveTrace
-  , ppSolveTrace
-  
-  , SolveState
-  , emptySolveState
-  , solveStateResetDone
-  , chrSolveStateDoneConstraints
-  , chrSolveStateTrace
--}
-  
+    
   , IsCHRSolvable(..)
-{-
-  , chrSolve'
-  , chrSolve''
-  , chrSolveM
-  )
--}
   )
   where
 
@@ -95,7 +63,7 @@ import           CHR.Utils
 import           CHR.Data.Lens
 import           CHR.Data.Lookup                                (Lookup, LookupApply, Scoped)
 import qualified CHR.Data.Lookup                                as Lk
-import qualified CHR.Data.TreeTrie                              as TT2
+import qualified CHR.Data.TreeTrie                              as TT
 import           CHR.Data.VarLookup
 
 import qualified Data.Set                                       as Set
@@ -116,11 +84,8 @@ import           Control.Monad.LogicState
 import           CHR.Pretty                                as Pretty
 -- import           UHC.Util.Serialize
 import           CHR.Types.Core
--- -- import           UHC.Util.CHR.Key
 import           CHR.Types.Rule
--- import           UHC.Util.CHR.Solve.TreeTrie.Internal.Shared
 import           CHR.Data.Substitutable
--- import           UHC.Util.VarMp
 import           CHR.Data.AssocL
 import           CHR.Data.Fresh
 -- 
@@ -159,39 +124,25 @@ instance PP CHRConstraintInx where
 -- | A CHR as stored in a CHRStore, requiring additional info for efficiency
 data StoredCHR c g bp p
   = StoredCHR
-      { _storedHeadKeys  :: ![CHRKey2 c]                        -- ^ the keys corresponding to the head of the rule
+      { _storedHeadKeys  :: ![CHRKey c]                        -- ^ the keys corresponding to the head of the rule
       , _storedChrRule   :: !(Rule c g bp p)                          -- ^ the rule
       , _storedChrInx    :: !CHRInx                                -- ^ index of constraint for which is keyed into store
-      -- , storedKeys      :: ![Maybe (CHRKey c)]                  -- ^ keys of all constraints; at storedChrInx: Nothing
-      -- , storedIdent     :: !(UsedByKey c)                       -- ^ the identification of a CHR, used for propagation rules (see remark at begin)
       }
   deriving (Typeable)
   
 storedChrRule' :: StoredCHR c g bp p -> Rule c g bp p
 storedChrRule' = _storedChrRule
 
--- type instance TTKey (StoredCHR c g bp p) = TTKey c
-
-{-
-instance (TTKeyable (Rule c g bp p)) => TTKeyable (StoredCHR c g bp p) where
-  toTTKey' o schr = toTTKey' o $ storedChrRule schr
-
--- | The size of the simplification part of a CHR
-storedSimpSz :: StoredCHR c g bp p -> Int
-storedSimpSz = ruleSimpSz . storedChrRule
-{-# INLINE storedSimpSz #-}
--}
-
 -- | A CHR store is a trie structure
 data CHRStore cnstr guard bprio prio
   = CHRStore
-      { _chrstoreTrie    :: TT2.TreeTrie (TT2.TrTrKey cnstr) [CHRConstraintInx]                       -- ^ map from the search key of a rule to the index into tabl
+      { _chrstoreTrie    :: TT.TreeTrie (TT.TrTrKey cnstr) [CHRConstraintInx]                       -- ^ map from the search key of a rule to the index into tabl
       , _chrstoreTable   :: IntMap.IntMap (StoredCHR cnstr guard bprio prio)      -- ^ (possibly multiple) rules for a key
       }
   deriving (Typeable)
 
 emptyCHRStore :: CHRStore cnstr guard bprio prio
-emptyCHRStore = CHRStore TT2.empty IntMap.empty
+emptyCHRStore = CHRStore TT.empty IntMap.empty
 
 -------------------------------------------------------------------------------------------
 --- Store holding work, split up in global and backtrackable part
@@ -203,13 +154,13 @@ type WorkInxSet = IntSet.IntSet
 
 data WorkStore cnstr
   = WorkStore
-      { _wkstoreTrie     :: TT2.TreeTrie (TT2.TrTrKey cnstr) [WorkInx]                -- ^ map from the search key of a constraint to index in table
-      , _wkstoreTable    :: IntMap.IntMap (Work2 cnstr)      -- ^ all the work ever entered
+      { _wkstoreTrie     :: TT.TreeTrie (TT.TrTrKey cnstr) [WorkInx]                -- ^ map from the search key of a constraint to index in table
+      , _wkstoreTable    :: IntMap.IntMap (Work cnstr)      -- ^ all the work ever entered
       }
   deriving (Typeable)
 
 emptyWorkStore :: WorkStore cnstr
-emptyWorkStore = WorkStore TT2.empty IntMap.empty
+emptyWorkStore = WorkStore TT.empty IntMap.empty
 
 data WorkQueue
   = WorkQueue
@@ -334,17 +285,9 @@ type CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m
 -- | All required behavior, as class alias
 class ( IsCHRSolvable env cnstr guard bprio prio subst
       , Monad m
-      -- , Ord (TTKey cnstr)
-      -- , Ord prio
-      -- , Ord (VarLookupKey subst)
-      -- , VarLookup subst -- (VarLookupKey subst) (VarLookupVal subst)
       , Lookup subst (VarLookupKey subst) (VarLookupVal subst)
       , LookupApply subst subst
-      -- , Scoped subst
-      -- , TTKeyable cnstr
-      -- , MonadIO m -- for debugging
       , Fresh Int (ExtrValVarKey (VarLookupVal subst))
-      -- , VarLookupKey subst ~ ExtrValVarKey cnstr
       , ExtrValVarKey (VarLookupVal subst) ~ VarLookupKey subst
       , VarTerm (VarLookupVal subst)
       ) => MonoBacktrackPrio cnstr guard bprio prio subst env m
@@ -398,18 +341,10 @@ getSolveTrace = fmap (ppSolveTrace . reverse) $ getl $ fstl ^* chrgstTrace
 --- CHR store, API for adding rules
 -------------------------------------------------------------------------------------------
 
-{-
--- | Combine lists of stored CHRs by concat, adapting their identification nr to be unique
-cmbStoredCHRs :: [StoredCHR c g bp p] -> [StoredCHR c g bp p] -> [StoredCHR c g bp p]
-cmbStoredCHRs s1 s2
-  = map (\s@(StoredCHR {storedIdent=(k,nr)}) -> s {storedIdent = (k,nr+l)}) s1 ++ s2
-  where l = length s2
--}
-
 instance Show (StoredCHR c g bp p) where
   show _ = "StoredCHR"
 
-ppStoredCHR :: (PP (TT2.TrTrKey c), PP c, PP g, PP bp, PP p) => StoredCHR c g bp p -> PP_Doc
+ppStoredCHR :: (PP (TT.TrTrKey c), PP c, PP g, PP bp, PP p) => StoredCHR c g bp p -> PP_Doc
 ppStoredCHR c@(StoredCHR {})
   = ppParensCommas (_storedHeadKeys c)
     >-< _storedChrRule c
@@ -421,25 +356,8 @@ ppStoredCHR c@(StoredCHR {})
             -- , "ident" >#< ppParensCommas [ppTreeTrieKey idKey,pp idSeqNr]
             ])
 
-instance (PP (TT2.TrTrKey c), PP c, PP g, PP bp, PP p) => PP (StoredCHR c g bp p) where
+instance (PP (TT.TrTrKey c), PP c, PP g, PP bp, PP p) => PP (StoredCHR c g bp p) where
   pp = ppStoredCHR
-
-{-
--- | Convert from list to store
-chrStoreFromElems :: (TTKeyable c, Ord (TTKey c), TTKey c ~ TrTrKey c) => [Rule c g bp p] -> CHRStore c g b p
-chrStoreFromElems chrs
-  = mkCHRStore
-    $ chrTrieFromListByKeyWith cmbStoredCHRs
-        [ (k,[StoredCHR chr i ks' (concat ks,0)])
-        | chr <- chrs
-        , let cs = ruleHead chr
-              simpSz = ruleSimpSz chr
-              ks = map chrToKey cs
-        , (c,k,i) <- zip3 cs ks [0..]
-        , let (ks1,(_:ks2)) = splitAt i ks
-              ks' = map Just ks1 ++ [Nothing] ++ map Just ks2
-        ]
--}
 
 -- | Add a rule as a CHR
 addRule :: MonoBacktrackPrio c g bp p s e m => Rule c g bp p -> CHRMonoBacktrackPrioT c g bp p s e m ()
@@ -451,10 +369,10 @@ addRule chr = do
     fstl ^* chrgstStore ^* chrstoreTrie =$: \t ->
       foldr (TreeTrie.unionWith (++)) t [ TreeTrie.singleton k [CHRConstraintInx i j] | (k,c,j) <- zip3 ks (ruleHead chr) [0..] ]
     -}
-    let ks = map TT2.toTreeTrieKey $ ruleHead chr
+    let ks = map TT.toTreeTrieKey $ ruleHead chr
     fstl ^* chrgstStore ^* chrstoreTable =$: IntMap.insert i (StoredCHR ks chr i)
     fstl ^* chrgstStore ^* chrstoreTrie =$: \t ->
-      foldr (TT2.unionWith (++)) t [ TT2.singleton k [CHRConstraintInx i j] | (k,c,j) <- zip3 ks (ruleHead chr) [0..] ]
+      foldr (TT.unionWith (++)) t [ TT.singleton k [CHRConstraintInx i j] | (k,c,j) <- zip3 ks (ruleHead chr) [0..] ]
     return ()
 
 {-
@@ -462,10 +380,10 @@ addRule chr = do
 addRule2 :: MonoBacktrackPrio c g bp p s e m => Rule c g bp p -> CHRMonoBacktrackPrioT c g bp p s e m ()
 addRule2 chr = do
     i <- modifyAndGet (fstl ^* chrgstNextFreeRuleInx) $ \i -> (i, i + 1)
-    let ks = map TT2.toTreeTrieKey $ ruleHead chr
+    let ks = map TT.toTreeTrieKey $ ruleHead chr
     fstl ^* chrgstStore ^* chrstoreTable =$: IntMap.insert i (StoredCHR [] ks chr i)
     fstl ^* chrgstStore ^* chrstoreTrie2 =$: \t ->
-      foldr (TT2.unionWith (++)) t [ TT2.singleton k [CHRConstraintInx i j] | (k,c,j) <- zip3 ks (ruleHead chr) [0..] ]
+      foldr (TT.unionWith (++)) t [ TT.singleton k [CHRConstraintInx i j] | (k,c,j) <- zip3 ks (ruleHead chr) [0..] ]
     return ()
 -}
 
@@ -573,10 +491,10 @@ addConstraintAsWork c = do
     w <- case via of
         -- a plain rule is added to the work store
         ConstraintSolvesVia_Rule -> do
-            fstl ^* chrgstWorkStore ^* wkstoreTrie =$: TT2.insertByKeyWith (++) k [i]
+            fstl ^* chrgstWorkStore ^* wkstoreTrie =$: TT.insertByKeyWith (++) k [i]
             addToWorkQueue i
             return $ Work k c i
-          where k = TT2.toTreeTrieKey c -- chrToKey c -- chrToWorkKey c
+          where k = TT.toTreeTrieKey c -- chrToKey c -- chrToWorkKey c
         -- work for the solver is added to its own queue
         ConstraintSolvesVia_Solve -> do
             addWorkToSolveQueue i
@@ -598,39 +516,6 @@ addConstraintAsWork c = do
 -}
   where
     fresh = modifyAndGet (fstl ^* chrgstNextFreeWorkInx) $ \i -> (i, i + 1)
-{-
-
-chrStoreSingletonElem :: (TTKeyable c, Ord (TTKey c), TTKey c ~ TrTrKey c) => Rule c g bp p -> CHRStore c g b p
-chrStoreSingletonElem x = chrStoreFromElems [x]
-
-chrStoreUnion :: (Ord (TTKey c)) => CHRStore c g b p -> CHRStore c g b p -> CHRStore c g b p
-chrStoreUnion cs1 cs2 = mkCHRStore $ chrTrieUnionWith cmbStoredCHRs (chrstoreTrie cs1) (chrstoreTrie cs2)
-{-# INLINE chrStoreUnion #-}
-
-chrStoreUnions :: (Ord (TTKey c)) => [CHRStore c g b p] -> CHRStore c g b p
-chrStoreUnions []  = emptyCHRStore
-chrStoreUnions [s] = s
-chrStoreUnions ss  = foldr1 chrStoreUnion ss
-{-# INLINE chrStoreUnions #-}
-
-chrStoreToList :: (Ord (TTKey c)) => CHRStore c g b p -> [(CHRKey c,[Rule c g bp p])]
-chrStoreToList cs
-  = [ (k,chrs)
-    | (k,e) <- chrTrieToListByKey $ chrstoreTrie cs
-    , let chrs = [chr | (StoredCHR {storedChrRule = chr, storedChrInx = 0}) <- e]
-    , not $ Prelude.null chrs
-    ]
-
-chrStoreElems :: (Ord (TTKey c)) => CHRStore c g b p -> [Rule c g bp p]
-chrStoreElems = concatMap snd . chrStoreToList
-
-ppCHRStore :: (PP c, PP g, PP p, Ord (TTKey c), PP (TTKey c)) => CHRStore c g b p -> PP_Doc
-ppCHRStore = ppCurlysCommasBlock . map (\(k,v) -> ppTreeTrieKey k >-< indent 2 (":" >#< ppBracketsCommasBlock v)) . chrStoreToList
-
-ppCHRStore' :: (PP c, PP g, PP p, Ord (TTKey c), PP (TTKey c)) => CHRStore c g b p -> PP_Doc
-ppCHRStore' = ppCurlysCommasBlock . map (\(k,v) -> ppTreeTrieKey k >-< indent 2 (":" >#< ppBracketsCommasBlock v)) . chrTrieToListByKey . chrstoreTrie
-
--}
 
 -------------------------------------------------------------------------------------------
 --- Solver combinators
@@ -692,19 +577,14 @@ slvScheduleRun = slvSplitFromSchedule >>= maybe mzero snd
 --- Solver utils
 -------------------------------------------------------------------------------------------
 
-{-
 lkupWork :: MonoBacktrackPrio c g bp p s e m => WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m (Work c)
-lkupWork i = fmap (IntMap.findWithDefault (panic "MBP.wkstoreTable.lookup") i) $ getl $ fstl ^* chrgstWorkStore ^* wkstoreTable
--}
-
-lkupWork :: MonoBacktrackPrio c g bp p s e m => WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m (Work2 c)
 lkupWork i = fmap (IntMap.findWithDefault (panic "MBP.wkstoreTable.lookup") i) $ getl $ fstl ^* chrgstWorkStore ^* wkstoreTable
 
 lkupChr :: MonoBacktrackPrio c g bp p s e m => CHRInx -> CHRMonoBacktrackPrioT c g bp p s e m (StoredCHR c g bp p)
 lkupChr  i = fmap (IntMap.findWithDefault (panic "MBP.chrSolve.chrstoreTable.lookup") i) $ getl $ fstl ^* chrgstStore ^* chrstoreTable
 
 -- | Convert
-cvtSolverReductionStep :: MonoBacktrackPrio c g bp p s e m => SolverReductionStep' CHRInx WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m (SolverReductionStep' (StoredCHR c g bp p) (Work2 c))
+cvtSolverReductionStep :: MonoBacktrackPrio c g bp p s e m => SolverReductionStep' CHRInx WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m (SolverReductionStep' (StoredCHR c g bp p) (Work c))
 cvtSolverReductionStep (SolverReductionStep mc ai nw) = do
     mc  <- cvtMC mc
     nw  <- fmap Map.fromList $ forM (Map.toList nw) $ \(via,i) -> do
@@ -716,7 +596,7 @@ cvtSolverReductionStep (SolverReductionStep mc ai nw) = do
       c'  <- lkupChr c
       ws' <- forM ws lkupWork
       return $ MatchedCombi c' ws'
--- cvtSolverReductionStep (SolverReductionDBG pp) = return (SolverReductionDBG pp)
+cvtSolverReductionStep (SolverReductionDBG pp) = return (SolverReductionDBG pp)
 
 -- | PP result
 ppSolverResult
@@ -914,10 +794,10 @@ chrSolve opts env = slv
                   let mbSlv = chrmatcherRun (chrBuiltinSolveM env $ workCnstr work) emptyCHRMatchEnv subst
                   
                   -- debug info
-                  -- sndl ^* chrbstReductionSteps =$: (SolverReductionDBG
-                  --   (    "solve wk" >#< work
-                  --    >-< "match" >#< mbSlv
-                  --   ) :)
+                  sndl ^* chrbstReductionSteps =$: (SolverReductionDBG
+                    (    "solve wk" >#< work
+                     >-< "match" >#< mbSlv
+                    ) :)
 
                   case mbSlv of
                     Just (s,_) -> do
@@ -951,7 +831,7 @@ chrSolve opts env = slv
                 Just workInx -> do
                     -- lookup the work
                     work  <- lkupWork  workInx
-                    -- work2 <- lkupWork2 workInx
+                    -- work2 <- lkupWork workInx
           
                     -- find all matching chrs for the work
                     foundChrInxs  <- slvLookup  (workKey work ) (chrgstStore ^* chrstoreTrie )
@@ -1114,9 +994,9 @@ slvLookup key t =
 -- | Lookup work in a store part of the global state
 slvLookup
   :: ( MonoBacktrackPrio c g bp p s e m
-     , Ord (TT2.TrTrKey c)
-     ) => CHRKey2 c                                   -- ^ work key
-       -> Lens (CHRGlobState c g bp p s e m) (TT2.TreeTrie (TT2.TrTrKey c) [x])
+     , Ord (TT.TrTrKey c)
+     ) => CHRKey c                                   -- ^ work key
+       -> Lens (CHRGlobState c g bp p s e m) (TT.TreeTrie (TT.TrTrKey c) [x])
        -> CHRMonoBacktrackPrioT c g bp p s e m [x]
 slvLookup key t =
     (getl $ fstl ^* t) >>= \t -> do
@@ -1124,7 +1004,7 @@ slvLookup key t =
       let lkup how = concat $ TreeTrie.lookupResultToList $ TreeTrie.lookupPartialByKey how key t
       return $ Set.toList $ Set.fromList $ lkup TTL_WildInTrie ++ lkup TTL_WildInKey
       -}
-      return $ concat $ TT2.lookupResultToList $ TT2.lookup key t
+      return $ concat $ TT.lookupResultToList $ TT.lookup key t
 
 {-
 -- | Extract candidates matching a CHRKey.

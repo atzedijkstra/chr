@@ -21,7 +21,7 @@ import           CHR.Data.Substitutable
 import           CHR.Pretty
 import           CHR.Utils
 import           CHR.Data.Lens
-import qualified CHR.Data.TreeTrie                                  as TT2
+import qualified CHR.Data.TreeTrie                                  as TT
 -- import qualified UHC.Util.CHR.Solve.TreeTrie.Internal.Shared        as TT
 import qualified CHR.Data.Lookup                                    as Lk
 import           CHR.Types.Rule
@@ -62,7 +62,7 @@ runFile runopts f = do
               -- print program
               liftIO $ putPPLn $ "Rules" >-< indent 2 (vlist $ map pp prog)
               -- liftIO $ putPPLn $ "Rule TT  keys" >-< indent 2 (vlist $ map (pp . TT.chrToKey . head . ruleHead) prog)
-              -- liftIO $ putPPLn $ "Rule TT2 keys" >-< indent 2 (vlist $ map (pp . TT2.toTreeTrieKey) prog)
+              -- liftIO $ putPPLn $ "Rule TT2 keys" >-< indent 2 (vlist $ map (pp . TT.toTreeTrieKey) prog)
               -- freshen query vars
               query <- slvFreshSubst Set.empty query >>= \s -> return $ s `varUpd` query
               -- print query

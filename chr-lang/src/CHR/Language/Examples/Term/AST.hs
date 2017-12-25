@@ -23,7 +23,7 @@ import qualified CHR.Data.Lookup.Stacked                        as Lk
 import qualified CHR.Data.Lookup.Scoped                         as Lk hiding (empty)
 import           CHR.Data.Substitutable
 -- import           UHC.Util.TreeTrie
-import qualified CHR.Data.TreeTrie                              as TT2
+import qualified CHR.Data.TreeTrie                              as TT
 import qualified CHR.Data.VecAlloc                              as VAr
 import           CHR.Pretty                                     as PP
 -- import           UHC.Util.Serialize
@@ -163,22 +163,22 @@ instance TTKeyable C where
   toTTKeyParentChildren' o (C_Con c as) = (TT1K_One $ Key_Str c, ttkChildren $ map (toTTKey' o) as)
 -}
 
-type instance TT2.TrTrKey Tm = Key
-type instance TT2.TrTrKey C  = Key
+type instance TT.TrTrKey Tm = Key
+type instance TT.TrTrKey C  = Key
 
-instance TT2.TreeTrieKeyable Tm where
-  toTreeTriePreKey1 (Tm_Var  v) = TT2.prekey1Wild
-  toTreeTriePreKey1 (Tm_Int  i) = TT2.prekey1 $ Key_Int i
-  toTreeTriePreKey1 (Tm_Str  s) = TT2.prekey1 $ Key_Str {- $ "Tm_Str:" ++ -} s
-  toTreeTriePreKey1 (Tm_Bool i) = TT2.prekey1 $ Key_Int $ fromEnum i
-  toTreeTriePreKey1 (Tm_Con c as) = TT2.prekey1WithChildren (Key_Str {- $ "Tm_Con:" ++ -} c) as
-  toTreeTriePreKey1 (Tm_Op op as) = TT2.prekey1WithChildren (Key_Op op) as
-  toTreeTriePreKey1 (Tm_Lst h _ ) = TT2.prekey1WithChildren Key_Lst h
+instance TT.TreeTrieKeyable Tm where
+  toTreeTriePreKey1 (Tm_Var  v) = TT.prekey1Wild
+  toTreeTriePreKey1 (Tm_Int  i) = TT.prekey1 $ Key_Int i
+  toTreeTriePreKey1 (Tm_Str  s) = TT.prekey1 $ Key_Str {- $ "Tm_Str:" ++ -} s
+  toTreeTriePreKey1 (Tm_Bool i) = TT.prekey1 $ Key_Int $ fromEnum i
+  toTreeTriePreKey1 (Tm_Con c as) = TT.prekey1WithChildren (Key_Str {- $ "Tm_Con:" ++ -} c) as
+  toTreeTriePreKey1 (Tm_Op op as) = TT.prekey1WithChildren (Key_Op op) as
+  toTreeTriePreKey1 (Tm_Lst h _ ) = TT.prekey1WithChildren Key_Lst h
 
-instance TT2.TreeTrieKeyable C where
+instance TT.TreeTrieKeyable C where
   -- Only necessary for non-builtin constraints
-  toTreeTriePreKey1 (C_Con c as) = TT2.prekey1WithChildren (Key_Str {- $ "C_Con:" ++ -} c) as
-  toTreeTriePreKey1 _            = TT2.prekey1Nil
+  toTreeTriePreKey1 (C_Con c as) = TT.prekey1WithChildren (Key_Str {- $ "C_Con:" ++ -} c) as
+  toTreeTriePreKey1 _            = TT.prekey1Nil
 
 type E = ()
 
