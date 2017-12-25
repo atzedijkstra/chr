@@ -10,9 +10,9 @@ sys	0m0.038s
 
 Queens 5 (10 solutions)
 --------
-real	0m40.108s
-user	0m38.589s
-sys	0m1.096s
+real	0m32.401s
+user	0m31.368s
+sys	0m0.604s
 -}
 
 {-

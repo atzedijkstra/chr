@@ -16,7 +16,6 @@ import           CHR.Pretty
 
 import           CHR.Types
 import           CHR.Types.Rule
--- import           CHR.Types.Core
 import           CHR.Language.GTerm.AST
 
 -------------------------------------------------------------------------------------------

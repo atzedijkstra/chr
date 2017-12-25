@@ -37,7 +37,8 @@ library
     TypeFamilies,
     FlexibleContexts,
     FunctionalDependencies,
-    FlexibleInstances
+    FlexibleInstances,
+    RankNTypes
   build-depends:      
     base >=4.9 && <4.10,
     -- array >= 0.3,
