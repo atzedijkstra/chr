@@ -775,6 +775,7 @@ defaultCHRSolveOpts
 --- Solver
 -------------------------------------------------------------------------------------------
 
+{-# INLINABLE chrSolve #-}
 -- | (Under dev) solve
 chrSolve
   :: forall c g bp p s e m .
@@ -988,6 +989,7 @@ slvFreshSubst except x =
     fmap (foldr Lk.apply Lk.empty) $
       forM (Set.toList $ varFreeSet x `Set.difference` except) $ \v ->
         modifyAndGet (sndl ^* chrbstFreshVar) (freshWith $ Just v) >>= \v' -> return $ (Lk.singleton v (varTermMkKey v') :: s)
+{-# INLINE slvFreshSubst #-}
 
 {-
 -- | Lookup work in a store part of the global state
@@ -1017,6 +1019,7 @@ slvLookup key t =
       return $ Set.toList $ Set.fromList $ lkup TTL_WildInTrie ++ lkup TTL_WildInKey
       -}
       return $ concat $ TT.lookupResultToList $ TT.lookup key t
+{-# INLINE slvLookup #-}
 
 {-
 -- | Extract candidates matching a CHRKey.
@@ -1069,6 +1072,7 @@ slvCandidate waitingWk alreadyMatchedCombis wi (StoredCHR {_storedHeadKeys = ks,
            $ combineToDistinguishedEltsBy (==) $ ws1 ++ [[wi]] ++ ws2
   where
     lkup k = slvLookup k (chrgstWorkStore ^* wkstoreTrie)
+{-# INLINE slvCandidate #-}
 
 -- | Match the stored CHR with a set of possible constraints, giving a substitution on success
 slvMatch
@@ -1101,6 +1105,7 @@ slvMatch env chr@(StoredCHR {_storedChrRule = Rule {rulePrio = mbpr, ruleHead = 
     -- ignoreWait 
     checks  = map (chrCheckM env) gd
     freevars = Set.unions [varFreeSet hc, maybe Set.empty varFreeSet mbbpr]
+{-# INLINE slvMatch #-}
 
 -------------------------------------------------------------------------------------------
 --- Instances: Serialize

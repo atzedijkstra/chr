@@ -31,6 +31,8 @@ import           CHR.Solve.MonoBacktrackPrio      as MBP
 import           CHR.Language.Examples.Term.AST
 import           CHR.Language.Examples.Term.Visualizer
 
+import qualified GHC.Exts                                           as Prim
+
 data RunOpt
   = RunOpt_DebugTrace               -- ^ include debugging trace in output
   | RunOpt_SucceedOnLeftoverWork    -- ^ left over unresolvable (non residue) work is also a successful result
@@ -74,7 +76,7 @@ runFile runopts f = do
               mapM_ addConstraintAsWork query
               -- solve
               liftIO $ msg $ "SOLVE " ++ f
-              r <- chrSolve sopts ()
+              r <- (Prim.inline chrSolve) sopts ()
               ppSolverResult verbosity r >>= \sr -> liftIO $ putPPLn $ "Solution" >-< indent 2 sr
               if (RunOpt_WriteVisualization `elem` runopts)
                 then
