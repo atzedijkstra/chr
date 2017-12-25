@@ -7,7 +7,6 @@ module CHR.Language.Examples.Term.AST
   ( Tm(..)
   , C(..)
   , G(..)
-  -- , B(..)
   , P(..)
   , POp(..)
   , E
@@ -22,16 +21,12 @@ import qualified CHR.Data.Lookup                                as Lk
 import qualified CHR.Data.Lookup.Stacked                        as Lk
 import qualified CHR.Data.Lookup.Scoped                         as Lk hiding (empty)
 import           CHR.Data.Substitutable
--- import           UHC.Util.TreeTrie
 import qualified CHR.Data.TreeTrie                              as TT
 import qualified CHR.Data.VecAlloc                              as VAr
 import           CHR.Pretty                                     as PP
 -- import           UHC.Util.Serialize
--- import           UHC.Util.CHR.Key
--- import           UHC.Util.CHR.Base
 import           CHR.Types
 import           CHR.Types.Core
--- import           CHR.Types.Rule
 import           CHR.Utils
 import           CHR.Data.AssocL
 import           CHR.Data.Lens
@@ -49,8 +44,6 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Applicative
 import           GHC.Generics                                   (Generic)
-
--- import qualified UHC.Util.CHR.Solve.TreeTrie.Mono               as M
 
 -- import           UHC.Util.Debug
 
@@ -137,32 +130,6 @@ instance PP G where
 
 type instance TrTrKey Tm = Key
 type instance TrTrKey C = Key
--- type instance TTKey Tm = Key
--- type instance TTKey C = Key
-
--- type instance TrTrKey (Maybe x) = TTKey x
-
-{-
-instance (TTKeyable x, Key ~ TTKey (Maybe x)) => TTKeyable (Maybe x) where
-  toTTKeyParentChildren' o Nothing  = (TT1K_One $ Key_Con "Noth", ttkChildren [])
-  toTTKeyParentChildren' o (Just x) = (TT1K_One $ Key_Con "Just", ttkChildren [toTTKey' o x])
--}
-
-{-
-instance TTKeyable Tm where
-  toTTKeyParentChildren' o (Tm_Var v) | ttkoptsVarsAsWild o = (TT1K_Any, ttkChildren [])
-                                      | otherwise           = (TT1K_One $ Key_Var v, ttkChildren [])
-  toTTKeyParentChildren' o (Tm_Int i) = (TT1K_One $ Key_Int i, ttkChildren [])
-  toTTKeyParentChildren' o (Tm_Str s) = (TT1K_One $ Key_Str s, ttkChildren [])
-  toTTKeyParentChildren' o (Tm_Bool i) = (TT1K_One $ Key_Int $ fromEnum i, ttkChildren [])
-  toTTKeyParentChildren' o (Tm_Con c as) = (TT1K_One $ Key_Str c, ttkChildren $ map (toTTKey' o) as)
-  toTTKeyParentChildren' o (Tm_Lst h mt) = (TT1K_One $ Key_Lst  , ttkChildren $ map (toTTKey' o) h) -- map (toTTKey' o) $ maybeToList mt ++ h)
-  toTTKeyParentChildren' o (Tm_Op op as) = (TT1K_One $ Key_Op op, ttkChildren $ map (toTTKey' o) as)
-
-instance TTKeyable C where
-  -- Only necessary for non-builtin constraints
-  toTTKeyParentChildren' o (C_Con c as) = (TT1K_One $ Key_Str c, ttkChildren $ map (toTTKey' o) as)
--}
 
 type instance TT.TrTrKey Tm = Key
 type instance TT.TrTrKey C  = Key
@@ -254,7 +221,7 @@ instance VarUpdatable S S where
   varUpd s = {- Lk.apply s . -} Lk.map (s `varUpd`) -- (|+>)
 
 instance VarUpdatable Tm S where
-  s `varUpd` t = case fromJust $ Lk.lookupResolveVal varTermMbKey t s <|> return t of
+  s `varUpd` t = case fromMaybe t $ Lk.lookupResolveVal varTermMbKey t s of
       Tm_Con c as -> Tm_Con c $ s `varUpd` as
       Tm_Lst h mt -> Tm_Lst (s `varUpd` h) (s `varUpd` mt)
       Tm_Op  o as -> Tm_Op  o $ s `varUpd` as
@@ -456,5 +423,5 @@ instance GTermAs C G P P Tm where
 
 instance MBP.IsCHRSolvable E C G P P S
 
-instance MBP.MonoBacktrackPrio C G P P S E IO
+-- instance MBP.MonoBacktrackPrio C G P P S E IO
 

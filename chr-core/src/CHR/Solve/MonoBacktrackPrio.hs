@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, StandaloneDeriving, UndecidableInstances, NoMonomorphismRestriction, MultiParamTypeClasses, TemplateHaskell, FunctionalDependencies #-}
+{-# LANGUAGE ConstraintKinds, ScopedTypeVariables, StandaloneDeriving, UndecidableInstances, NoMonomorphismRestriction, MultiParamTypeClasses, TemplateHaskell, FunctionalDependencies #-}
 
 -------------------------------------------------------------------------------------------
 --- CHR solver
@@ -285,6 +285,7 @@ type CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m
   = LogicStateT (CHRGlobState cnstr guard bprio prio subst env m) (CHRBackState cnstr bprio subst env) m
 
 -- | All required behavior, as class alias
+{-
 class ( IsCHRSolvable env cnstr guard bprio prio subst
       , Monad m
       , Lookup subst (VarLookupKey subst) (VarLookupVal subst)
@@ -293,6 +294,16 @@ class ( IsCHRSolvable env cnstr guard bprio prio subst
       , ExtrValVarKey (VarLookupVal subst) ~ VarLookupKey subst
       , VarTerm (VarLookupVal subst)
       ) => MonoBacktrackPrio cnstr guard bprio prio subst env m
+-}
+type MonoBacktrackPrio cnstr guard bprio prio subst env m
+    = ( IsCHRSolvable env cnstr guard bprio prio subst
+      , Monad m
+      , Lookup subst (VarLookupKey subst) (VarLookupVal subst)
+      , LookupApply subst subst
+      , Fresh Int (ExtrValVarKey (VarLookupVal subst))
+      , ExtrValVarKey (VarLookupVal subst) ~ VarLookupKey subst
+      , VarTerm (VarLookupVal subst)
+      )
 
 -------------------------------------------------------------------------------------------
 --- Solver result
@@ -776,6 +787,13 @@ defaultCHRSolveOpts
 -------------------------------------------------------------------------------------------
 
 {-# INLINABLE chrSolve #-}
+{-# SPECIALIZE chrSolve
+  :: ( MonoBacktrackPrio c g bp p s e IO
+     , PP s
+     ) => CHRSolveOpts
+       -> e
+       -> CHRMonoBacktrackPrioT c g bp p s e IO (SolverResult s)
+  #-}
 -- | (Under dev) solve
 chrSolve
   :: forall c g bp p s e m .
