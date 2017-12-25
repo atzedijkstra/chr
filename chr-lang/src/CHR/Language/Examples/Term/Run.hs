@@ -9,6 +9,8 @@ module CHR.Language.Examples.Term.Run
 import           Data.Maybe
 import           System.IO
 import           Data.Time.Clock.POSIX
+import           Data.Time.Clock.System
+import           Data.Time.Clock.TAI
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.State.Class
@@ -89,10 +91,17 @@ runFile runopts f = do
                     liftIO $ putStrLn $ "Written visualization as " ++ fileName
                 else (return ())
               return r
-        runCHRMonoBacktrackPrioT (chrgstVarToNmMp ^= Lk.inverse (flip (,)) varToNmMp $ emptyCHRGlobState) (emptyCHRBackState {- _chrbstBacktrackPrio=0 -}) {- 0 -} mbp
+        tBef <- getSystemTime 
+        (_,(gs,_)) <- runCHRMonoBacktrackPrioT
+          (chrgstVarToNmMp ^= Lk.inverse (flip (,)) varToNmMp $ emptyCHRGlobState)
+          (emptyCHRBackState {- _chrbstBacktrackPrio=0 -}) {- 0 -}
+          mbp
+        tAft <- getSystemTime
+        let tDif = systemToTAITime tAft `diffAbsoluteTime` systemToTAITime tBef
+            nSteps = gs ^. MBP.chrgstStatNrSolveSteps
 
         -- done
-        msg $ "DONE " ++ f
+        msg $ "DONE (" ++ show tDif ++ " / " ++ show nSteps ++ " = " ++ show (tDif / fromIntegral nSteps) ++ ") " ++ f
     
   where
     msg m = putStrLn $ "---------------- " ++ m ++ " ----------------"

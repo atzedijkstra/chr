@@ -51,6 +51,6 @@ library
     -- fclabels >= 2.0.3,
     chr-data >= 0.1.0.0,
     chr-pretty >= 0.1.0.0,
-    logict-state >= 0.1.0.2
+    logict-state >= 0.1.0.4
   hs-source-dirs:      src
   default-language:    Haskell2010

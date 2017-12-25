@@ -25,6 +25,7 @@ module CHR.Solve.MonoBacktrackPrio
   , CHRGlobState(..)
   , emptyCHRGlobState
   , chrgstVarToNmMp
+  , chrgstStatNrSolveSteps
   
   , CHRBackState(..)
   , emptyCHRBackState
@@ -649,8 +650,8 @@ runCHRMonoBacktrackPrioT
      -> CHRBackState cnstr bprio subst env
      -- -> CHRPrioEvaluatableVal bprio
      -> CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m (SolverResult subst)
-     -> m [SolverResult subst]
-runCHRMonoBacktrackPrioT gs bs {- bp -} m = observeAllT (gs, bs {- _chrbstBacktrackPrio=bp -}) m
+     -> m ([SolverResult subst], (CHRGlobState cnstr guard bprio prio subst env m, CHRBackState cnstr bprio subst env))
+runCHRMonoBacktrackPrioT gs bs {- bp -} m = observeStateAllT (gs, bs {- _chrbstBacktrackPrio=bp -}) m
 
 -------------------------------------------------------------------------------------------
 --- Solver: Intermediate structures
@@ -787,13 +788,13 @@ defaultCHRSolveOpts
 -------------------------------------------------------------------------------------------
 
 {-# INLINABLE chrSolve #-}
-{-# SPECIALIZE chrSolve
+{- # SPECIALIZE chrSolve
   :: ( MonoBacktrackPrio c g bp p s e IO
      , PP s
      ) => CHRSolveOpts
        -> e
        -> CHRMonoBacktrackPrioT c g bp p s e IO (SolverResult s)
-  #-}
+  # -}
 -- | (Under dev) solve
 chrSolve
   :: forall c g bp p s e m .
