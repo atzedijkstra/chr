@@ -6,6 +6,7 @@
 
 module CHR.Utils
   ( 
+  {-
     -- * Set
     unionMapSet
 
@@ -18,7 +19,9 @@ module CHR.Utils
     -- * List
   , hdAndTl', hdAndTl
   , maybeNull
-  , maybeHd
+  -}
+    maybeHd
+  {-
   , wordsBy
   , initlast, initlast2
   , last'
@@ -26,10 +29,14 @@ module CHR.Utils
   , listSaturate, listSaturateWith
   , spanOnRest
   , filterMb
+  -}
   , splitPlaces
   , combineToDistinguishedEltsBy
+  {-
   , partitionOnSplit
+  -}
   , zipWithN
+  {-
   
     -- * Tuple
   , tup123to1, tup123to2
@@ -82,19 +89,26 @@ module CHR.Utils
   , showUnprefixed
   
     -- * Ordering
+    -}
   , orderingLexic
+  {-
   , orderingLexicList
   
     -- * Misc
+  -}
   , panic
-  
+  {-
   , isSortedByOn
   , sortOnLazy
   , sortOn
+  -}
   , sortByOn
+  {-
   , groupOn
   , groupByOn
+  -}
   , groupSortOn
+  {-
   , groupSortByOn
   , nubOn
   
@@ -115,6 +129,7 @@ module CHR.Utils
     -- * Monad
   , firstMaybeM
   , breakM
+  -}
   )
   where
 
@@ -127,6 +142,8 @@ import GHC.Generics
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 -- import qualified Data.Graph as Graph
+
+{-
 
 -------------------------------------------------------------------------
 -- Set
@@ -147,11 +164,13 @@ inverseMap mk = Map.fromList . map (uncurry mk) . Map.toList
 -- | Show keys of map using a separator
 showStringMapKeys :: Map.Map String x -> String -> String
 showStringMapKeys m sep = concat $ intersperse sep $ Map.keys m
+-}
 
 -------------------------------------------------------------------------
 -- List
 -------------------------------------------------------------------------
 
+{-
 -- | Get head and tail, with default if empty list
 hdAndTl' :: a -> [a] -> (a,[a])
 hdAndTl' _ (a:as) = (a,as)
@@ -161,6 +180,7 @@ hdAndTl' n []     = (n,[])
 hdAndTl :: [a] -> (a,[a])
 hdAndTl = hdAndTl' (panic "hdAndTl")
 {-# INLINE hdAndTl  #-}
+-}
 
 maybeNull :: r -> ([a] -> r) -> [a] -> r
 maybeNull n f l = if null l then n else f l
@@ -170,6 +190,7 @@ maybeHd :: r -> (a -> r) -> [a] -> r
 maybeHd n f = maybeNull n (f . head)
 {-# INLINE maybeHd  #-}
 
+{-
 -- | Split up in words by predicate
 wordsBy :: (a -> Bool) -> [a] -> [[a]]
 wordsBy p l
@@ -236,6 +257,8 @@ filterMb :: (a -> Maybe b) -> [a] -> [b]
 filterMb p = catMaybes . map p
 {-# INLINE filterMb #-}
 
+-}
+
 -- | Split at index places (inspired by/from split package). Places should be increasing, starting with an index >= 0.
 -- The number of sublists returned is one higher than the number of places.
 -- 
@@ -278,6 +301,8 @@ combineToDistinguishedEltsBy eq (l:ls)
 zipWithN :: ([x] -> y) -> [[x]] -> [y]
 zipWithN f l | any null l = []
              | otherwise  = f (map head l) : zipWithN f (map tail l)
+
+{-
 
 -------------------------------------------------------------------------
 -- Tupling, untupling
@@ -352,6 +377,7 @@ fth  = fth4
 {-# INLINE thd4 #-}
 {-# INLINE fth4 #-}
 {-# INLINE fth  #-}
+
 
 -------------------------------------------------------------------------
 -- String
@@ -434,6 +460,9 @@ splitForQualified s
                   (nq,(_:ns)) -> nq ++ [concatMap ("."++) ns]
                   _ -> ws'
 
+-}
+
+
 -------------------------------------------------------------------------
 -- Misc
 -------------------------------------------------------------------------
@@ -444,6 +473,8 @@ panic m = error ("panic: " ++ m)
 -------------------------------------------------------------------------
 -- group/sort/nub combi's
 -------------------------------------------------------------------------
+
+{-
 
 isSortedByOn :: (b -> b -> Ordering) -> (a -> b) -> [a] -> Bool
 isSortedByOn cmp sel l
@@ -457,6 +488,8 @@ sortOnLazy :: Ord b => (a -> b) -> [a] -> [a]
 sortOnLazy = sortByOn compare
 {-# INLINE sortOnLazy #-}
 
+-}
+
 #if __GLASGOW_HASKELL__ >= 710
 #else
 -- | The original Data.List.sortOn.
@@ -465,6 +498,7 @@ sortOn :: Ord b => (a -> b) -> [a] -> [a]
 sortOn = sortOnLazy
 {-# INLINE sortOn #-}
 #endif
+
 
 sortByOn :: (b -> b -> Ordering) -> (a -> b) -> [a] -> [a]
 sortByOn cmp sel = sortBy (cmp `on` sel) -- (\e1 e2 -> sel e1 `cmp` sel e2)
@@ -475,6 +509,7 @@ groupOn sel = groupBy ((==) `on` sel) -- (\e1 e2 -> sel e1 == sel e2)
 groupSortOn :: Ord b => (a -> b) -> [a] -> [[a]]
 groupSortOn sel = groupOn sel . sortOn sel
 
+{-
 groupByOn :: (b -> b -> Bool) -> (a -> b) -> [a] -> [[a]]
 groupByOn eq sel = groupBy (eq `on` sel) -- (\e1 e2 -> sel e1 `eq` sel e2)
 
@@ -499,6 +534,7 @@ partitionOnSplit split adapt pred xs = foldr sel ([],[]) xs
   where sel x ~(ts,fs) | pred x'   = ((adapt x',y):ts,   fs)
                        | otherwise = (             ts, y:fs)
           where (x',y) = split x
+-}
 
 {-
 partition               :: (a -> Bool) -> [a] -> ([a],[a])
@@ -510,6 +546,7 @@ select p x ~(ts,fs) | p x       = (x:ts,fs)
                     | otherwise = (ts, x:fs)
 -}
 
+{-
 -------------------------------------------------------------------------
 -- Partitioning with rebuild
 -------------------------------------------------------------------------
@@ -521,6 +558,8 @@ partitionAndRebuild f (v:vs)
   | otherwise            = (    vs1, v : vs2, \   r1 (r:r2) -> r : mk r1 r2)
   where (vs1,vs2,mk) = partitionAndRebuild f vs
 partitionAndRebuild _ [] = ([], [], \_ _ -> [])
+
+-}
 
 -------------------------------------------------------------------------
 -- Ordering
@@ -536,9 +575,12 @@ orderingLexic :: Ordering -> Ordering -> Ordering
 orderingLexic o1 o2 = if o1 == EQ then o2 else o1
 {-# INLINE orderingLexic #-}
 
+{-
+
 -------------------------------------------------------------------------
 -- Maybe
 -------------------------------------------------------------------------
+
 
 panicJust :: String -> Maybe a -> a
 panicJust m = maybe (panic m) id
@@ -569,6 +611,8 @@ maybeOr n fa fb ma mb
                   Just b -> fb b
                   _      -> n
 
+-}
+
 -------------------------------------------------------------------------
 -- Strongly Connected Components
 -------------------------------------------------------------------------
@@ -578,6 +622,7 @@ scc :: Ord n => [(n,[n])] -> [[n]]
 scc = map Graph.flattenSCC . Graph.stronglyConnComp . map (\(n,ns) -> (n, n, ns))
 -}
 
+{-
 -------------------------------------------------------------------------
 -- Map
 -------------------------------------------------------------------------
@@ -609,3 +654,7 @@ breakM :: Monad m => (a -> Bool) -> [m a] -> m ([a], Maybe (a,[m a]))
 breakM p l = br [] l >>= \(acc,res) -> return (reverse acc, res)
   where br acc []     = return (acc, Nothing)
         br acc (m:ms) = m >>= \x -> if p x then return (acc, Just (x, ms)) else br (x:acc) ms
+
+-}
+
+

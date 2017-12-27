@@ -185,6 +185,8 @@ instance (Scoped scps, Lookup lkup k (ScopedItem v)) => Lookup (ScpsLkup lkup sc
   -- first a quick test, then the more expensive
   null l@(ScpsLkup lkup scps) = null lkup || List.null (toList l)
   
+  size l@(ScpsLkup lkup _) = size lkup
+  
   {-
   -- should restrict to items which are nested inside current scope
   findMin (ScpsLkup lkup scps) = second _scopeditemVal $ findMin lkup
