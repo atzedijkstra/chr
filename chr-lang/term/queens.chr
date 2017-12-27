@@ -2,17 +2,14 @@
 -- Higher queen problems are very slow, can be used for optimizing the solver
 
 {- Performance (MacBook (12", Early 2016), 1,2 GHz Intel Core m5, 8 GB 1867 MHz LPDDR3):
-Queens 4 (2 solutions)
---------
-real	0m0.589s
-user	0m0.533s
-sys	0m0.038s
 
-Queens 5 (10 solutions)
+Queens 6 (4 solutions)
 --------
-real	0m32.401s
-user	0m31.368s
-sys	0m0.604s
+---------------- DONE (28.498958s / 788842 = 0.000036127587s) term/queens.chr ----------------
+
+real	0m28.520s
+user	0m28.118s
+sys	0m0.273s
 -}
 
 {-
@@ -22,16 +19,16 @@ row @ Row r <=> Queen r 1 \/ Queen r 2 \/ Queen r 3 \/ Queen r 4.
 -}
 
 {-
--}
 -- 5 Queens problem
 queens @ Queens <=> Row 1, Row 2, Row 3, Row 4, Row 5.
 row @ Row r <=> Queen r 1 \/ Queen r 2 \/ Queen r 3 \/ Queen r 4 \/ Queen r 5.
+-}
 
 {-
+-}
 -- 6 Queens problem
 queens @ Queens <=> Row 1, Row 2, Row 3, Row 4, Row 5, Row 6.
 row @ Row r <=> Queen r 1 \/ Queen r 2 \/ Queen r 3 \/ Queen r 4 \/ Queen r 5 \/ Queen r 6.
--}
 
 {-
 -- 8 Queens problem

@@ -155,25 +155,16 @@ type WorkInx = WorkTime
 
 type WorkInxSet = IntSet.IntSet
 
-data WorkOrFreeList cnstr
-  = WorkWork
-      { _worfWork       :: !(Work cnstr)
-      }
-  | WorkFreeList
-      { _worfNext       :: {-# UNPACK #-} !WorkTime 
-      }
-
 data WorkStore cnstr
   = WorkStore
       { _wkstoreTrie     :: !(TT.TreeTrie (TT.TrTrKey cnstr) [WorkInx])                -- ^ map from the search key of a constraint to index in table
-      , _wkstoreTable    :: !(IntMap.IntMap (WorkOrFreeList cnstr))      -- ^ all the work ever entered. FIXME: do GC. Infra in place but need to ensure it can be safely done because trace/etc gathers work via inx instead of directly
+      , _wkstoreTable    :: !(IntMap.IntMap (Work cnstr))      -- ^ all the work ever entered. FIXME: do GC
       , _wkstoreNextFreeWorkInx       :: {-# UNPACK #-} !WorkTime                                        -- ^ Next free work/constraint identification, used by solving to identify whether a rule has been used for a constraint.
-      , _wkstoreNextFreeListInx       :: {-# UNPACK #-} !WorkTime                                        -- ^ Next free work/constraint identification, used by solving to identify whether a rule has been used for a constraint.
       }
   deriving (Typeable)
 
 emptyWorkStore :: TT.TTCtxt (TT.TrTrKey cnstr) => WorkStore cnstr
-emptyWorkStore = WorkStore TT.empty IntMap.empty initWorkTime (-1)
+emptyWorkStore = WorkStore TT.empty IntMap.empty initWorkTime
 
 data WorkQueue
   = WorkQueue
@@ -257,7 +248,7 @@ data CHRGlobState cnstr guard bprio prio subst env m
       { _chrgstStore                 :: !(CHRStore cnstr guard bprio prio)                     -- ^ Actual database of rules, to be searched
       , _chrgstNextFreeRuleInx       :: {-# UNPACK #-} !CHRInx                                          -- ^ Next free rule identification, used by solving to identify whether a rule has been used for a constraint.
                                                                                          --   The numbering is applied to constraints inside a rule which can be matched.
-      , _chrgstWorkStore             :: !(WorkStore cnstr)                               -- ^ Actual database of solvable constraints
+      -- , _chrgstWorkStore             :: !(WorkStore cnstr)                               -- ^ Actual database of solvable constraints
       -- , _chrgstNextFreeWorkInx       :: {-# UNPACK #-} !WorkTime                                        -- ^ Next free work/constraint identification, used by solving to identify whether a rule has been used for a constraint.
       , _chrgstScheduleQueue         :: !(Que.MinPQueue (CHRPrioEvaluatableVal bprio) (CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m (SolverResult subst)))
       , _chrgstTrace                 :: !(SolveTrace' cnstr (StoredCHR cnstr guard bprio prio) subst)
@@ -267,7 +258,7 @@ data CHRGlobState cnstr guard bprio prio subst env m
   deriving (Typeable)
 
 emptyCHRGlobState :: TT.TTCtxt (TT.TrTrKey c) => CHRGlobState c g b p s e m
-emptyCHRGlobState = CHRGlobState emptyCHRStore 0 emptyWorkStore Que.empty emptySolveTrace 0 emptyVarToNmMp
+emptyCHRGlobState = CHRGlobState emptyCHRStore 0 Que.empty emptySolveTrace 0 emptyVarToNmMp
 
 -- | Backtrackable state
 data CHRBackState cnstr bprio subst env
@@ -277,6 +268,7 @@ data CHRBackState cnstr bprio subst env
       , _chrbstRuleWorkQueue         :: !WorkQueue                                              -- ^ work queue for rule matching
       , _chrbstSolveQueue            :: !WorkQueue                                              -- ^ solve queue, constraints which are not solved by rule matching but with some domain specific solver, yielding variable subst constributing to backtrackable bindings
       , _chrbstResidualQueue         :: [WorkInx]                                               -- ^ residual queue, constraints which are residual, no need to solve, etc
+      , _chrbstWorkStore             :: !(WorkStore cnstr)                               -- ^ Actual database of solvable constraints
       
       , _chrbstMatchedCombis         :: !(Set.Set MatchedCombi)                                 -- ^ all combis of chr + work which were reduced, to prevent this from happening a second time (when propagating)
       
@@ -288,8 +280,8 @@ data CHRBackState cnstr bprio subst env
       }
   deriving (Typeable)
 
-emptyCHRBackState :: (CHREmptySubstitution s, Bounded (CHRPrioEvaluatableVal bp)) => CHRBackState c bp s e
-emptyCHRBackState = CHRBackState minBound emptyWorkQueue emptyWorkQueue [] Set.empty 0 chrEmptySubst Map.empty []
+emptyCHRBackState :: (TT.TTCtxt (TT.TrTrKey c), CHREmptySubstitution s, Bounded (CHRPrioEvaluatableVal bp)) => CHRBackState c bp s e
+emptyCHRBackState = CHRBackState minBound emptyWorkQueue emptyWorkQueue [] emptyWorkStore Set.empty 0 chrEmptySubst Map.empty []
 
 -- | Monad for CHR, taking from 'LogicStateT' the state and backtracking behavior
 type CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m
@@ -349,7 +341,6 @@ class ( IsCHRConstraint env c s
 mkLabel ''WaitForVar
 mkLabel ''StoredCHR
 mkLabel ''CHRStore
-mkLabel ''WorkOrFreeList
 mkLabel ''WorkStore
 mkLabel ''WorkQueue
 mkLabel ''CHRGlobState
@@ -496,13 +487,13 @@ addConstraintAsWork
 addConstraintAsWork c = do
     let via = cnstrSolvesVia c
         addw i w = do
-          fstl ^* chrgstWorkStore ^* wkstoreTable =$: IntMap.insert i (WorkWork w)
+          sndl ^* chrbstWorkStore ^* wkstoreTable =$: IntMap.insert i w
           return (via,i)
     i <- fresh
     w <- case via of
         -- a plain rule is added to the work store
         ConstraintSolvesVia_Rule -> do
-            fstl ^* chrgstWorkStore ^* wkstoreTrie =$: TT.insertByKeyWith (++) k [i]
+            sndl ^* chrbstWorkStore ^* wkstoreTrie =$: TT.insertByKeyWith (++) k [i]
             addToWorkQueue i
             return $ Work k c i
           where k = TT.toTreeTrieKey c -- chrToKey c -- chrToWorkKey c
@@ -526,7 +517,7 @@ addConstraintAsWork c = do
             slvSucces
 -}
   where
-    fresh = modifyAndGet (fstl ^* chrgstWorkStore ^* wkstoreNextFreeWorkInx) $ \i -> (i, i + 1)
+    fresh = modifyAndGet (sndl ^* chrbstWorkStore ^* wkstoreNextFreeWorkInx) $ \i -> (i, i + 1)
 
 -------------------------------------------------------------------------------------------
 --- Solver combinators
@@ -589,15 +580,8 @@ slvScheduleRun = slvSplitFromSchedule >>= maybe mzero snd
 -------------------------------------------------------------------------------------------
 
 lkupWork :: MonoBacktrackPrio c g bp p s e m => WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m (Work c)
-lkupWork i = fmap (_worfWork . IntMap.findWithDefault (panic "MBP.wkstoreTable.lookup") i) $ getl $ fstl ^* chrgstWorkStore ^* wkstoreTable
+lkupWork i = fmap (IntMap.findWithDefault (panic "MBP.wkstoreTable.lookup") i) $ getl $ sndl ^* chrbstWorkStore ^* wkstoreTable
 {-# INLINE lkupWork #-}
-
-addWorkToFreeList :: MonoBacktrackPrio c g bp p s e m => WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m ()
-addWorkToFreeList i = (fstl ^* chrgstWorkStore) =$: \st -> 
-    st { _wkstoreTable = IntMap.insert i (WorkFreeList $ _wkstoreNextFreeListInx st) $ _wkstoreTable st
-       , _wkstoreNextFreeListInx = i
-       }
-{-# INLINE addWorkToFreeList #-}
 
 lkupChr :: MonoBacktrackPrio c g bp p s e m => CHRInx -> CHRMonoBacktrackPrioT c g bp p s e m (StoredCHR c g bp p)
 lkupChr  i = fmap (IntMap.findWithDefault (panic "MBP.chrSolve.chrstoreTable.lookup") i) $ getl $ fstl ^* chrgstStore ^* chrstoreTable
@@ -874,7 +858,7 @@ chrSolve opts env = slv
                     -- work2 <- lkupWork workInx
           
                     -- find all matching chrs for the work
-                    foundChrInxs  <- slvLookup  (workKey work ) (chrgstStore ^* chrstoreTrie )
+                    foundChrInxs  <- slvLookup  (workKey work ) (fstl ^* chrgstStore ^* chrstoreTrie )
                     -- foundChrInxs2 <- slvLookup2 (workKey work2) (chrgstStore ^* chrstoreTrie2)
                     -- remove duplicates, regroup
                     let foundChrGroupedInxs = Map.unionsWith Set.union $ map (\(CHRConstraintInx i j) -> Map.singleton i (Set.singleton j)) foundChrInxs
@@ -1035,10 +1019,10 @@ slvLookup
   :: ( MonoBacktrackPrio c g bp p s e m
      , Ord (TT.TrTrKey c)
      ) => CHRKey c                                   -- ^ work key
-       -> Lens (CHRGlobState c g bp p s e m) (TT.TreeTrie (TT.TrTrKey c) [x])
+       -> Lens (CHRGlobState c g bp p s e m, CHRBackState c bp s e) (TT.TreeTrie (TT.TrTrKey c) [x])
        -> CHRMonoBacktrackPrioT c g bp p s e m [x]
 slvLookup key t =
-    (getl $ fstl ^* t) >>= \t -> do
+    (getl t) >>= \t -> do
       {-
       let lkup how = concat $ TreeTrie.lookupResultToList $ TreeTrie.lookupPartialByKey how key t
       return $ Set.toList $ Set.fromList $ lkup TTL_WildInTrie ++ lkup TTL_WildInKey
@@ -1078,8 +1062,10 @@ slvCandidate waitingWk alreadyMatchedCombis wi (StoredCHR {_storedHeadKeys = ks,
 --     each match expressed as the list of constraints (in the form of Work + Key) found in the workList wlTrie, thus giving all combis with constraints as part of a CHR,
 --     partititioned on before or after last query time (to avoid work duplication later)
 slvCandidate
-  :: ( MonoBacktrackPrio c g bp p s e m
+  :: forall c g bp p s e m
+   . ( MonoBacktrackPrio c g bp p s e m
      -- , Ord (TTKey c), PP (TTKey c)
+     -- , ExtrValVarKey (VarLookupVal s) ~ VarLookupKey s
      ) => WorkInxSet                           -- ^ active in queue
        -> Set.Set MatchedCombi                      -- ^ already matched combis
        -> WorkInx                                   -- ^ work inx
@@ -1096,7 +1082,8 @@ slvCandidate waitingWk alreadyMatchedCombis wi (StoredCHR {_storedHeadKeys = ks,
                             && Set.notMember (MatchedCombi ci wi) alreadyMatchedCombis)
            $ combineToDistinguishedEltsBy (==) $ ws1 ++ [[wi]] ++ ws2
   where
-    lkup k = slvLookup k (chrgstWorkStore ^* wkstoreTrie)
+    -- lkup :: CHRKey c -> CHRMonoBacktrackPrioT c g bp p s e m [WorkInx]
+    lkup k = slvLookup k (sndl ^* chrbstWorkStore ^* wkstoreTrie)
 {-# INLINE slvCandidate #-}
 
 -- | Match the stored CHR with a set of possible constraints, giving a substitution on success
