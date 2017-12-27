@@ -92,8 +92,8 @@ import qualified CHR.Data.FastSeq           as Seq
 -- | Key used on 1 level of trie.
 -- Key1_Wild plays a special role, may occur in Key1_Multi only, and in there it is guaranteed to have non wild siblings, allowing easy wildcard lookup where only not all elements of the group need be a specific Key1_Single
 data Key1 k
-  = Key1_Single k
-  | Key1_Multi  [Key1 k]
+  = Key1_Single !k
+  | Key1_Multi  ![Key1 k]
   | Key1_Wild                   -- ^ equal to anything
   | Key1_Nil                    -- ^ equal to nothing, except Key1_Wild
   deriving (Generic, Typeable {-, Eq, Ord -})
@@ -260,7 +260,7 @@ type TTCtxt a = (Ord a)
 data TreeTrie k v
   = TreeTrie
       { ttrieMbVal       :: Maybe v                                                 -- value
-      , ttrieSubs        :: TreeTrieChildren k v                                    -- children
+      , ttrieSubs        :: !(TreeTrieChildren k v)                                    -- children
       }
  deriving (Typeable)
 

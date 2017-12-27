@@ -115,9 +115,9 @@ type CHRInx = Int
 
 -- | Index into rule and head constraint
 data CHRConstraintInx =
-  CHRConstraintInx -- {-# UNPACK #-}
-    { chrciInx :: !CHRInx
-    , chrciAt  :: !Int
+  CHRConstraintInx 
+    { chrciInx :: {-# UNPACK #-} !CHRInx
+    , chrciAt  :: {-# UNPACK #-} !Int
     }
   deriving (Eq, Ord, Show)
 
@@ -129,7 +129,7 @@ data StoredCHR c g bp p
   = StoredCHR
       { _storedHeadKeys  :: ![CHRKey c]                        -- ^ the keys corresponding to the head of the rule
       , _storedChrRule   :: !(Rule c g bp p)                          -- ^ the rule
-      , _storedChrInx    :: !CHRInx                                -- ^ index of constraint for which is keyed into store
+      , _storedChrInx    :: {-# UNPACK #-} !CHRInx                                -- ^ index of constraint for which is keyed into store
       }
   deriving (Typeable)
   
@@ -155,15 +155,25 @@ type WorkInx = WorkTime
 
 type WorkInxSet = IntSet.IntSet
 
+data WorkOrFreeList cnstr
+  = WorkWork
+      { _worfWork       :: !(Work cnstr)
+      }
+  | WorkFreeList
+      { _worfNext       :: {-# UNPACK #-} !WorkTime 
+      }
+
 data WorkStore cnstr
   = WorkStore
-      { _wkstoreTrie     :: TT.TreeTrie (TT.TrTrKey cnstr) [WorkInx]                -- ^ map from the search key of a constraint to index in table
-      , _wkstoreTable    :: IntMap.IntMap (Work cnstr)      -- ^ all the work ever entered
+      { _wkstoreTrie     :: !(TT.TreeTrie (TT.TrTrKey cnstr) [WorkInx])                -- ^ map from the search key of a constraint to index in table
+      , _wkstoreTable    :: !(IntMap.IntMap (WorkOrFreeList cnstr))      -- ^ all the work ever entered. FIXME: do GC. Infra in place but need to ensure it can be safely done because trace/etc gathers work via inx instead of directly
+      , _wkstoreNextFreeWorkInx       :: {-# UNPACK #-} !WorkTime                                        -- ^ Next free work/constraint identification, used by solving to identify whether a rule has been used for a constraint.
+      , _wkstoreNextFreeListInx       :: {-# UNPACK #-} !WorkTime                                        -- ^ Next free work/constraint identification, used by solving to identify whether a rule has been used for a constraint.
       }
   deriving (Typeable)
 
 emptyWorkStore :: TT.TTCtxt (TT.TrTrKey cnstr) => WorkStore cnstr
-emptyWorkStore = WorkStore TT.empty IntMap.empty
+emptyWorkStore = WorkStore TT.empty IntMap.empty initWorkTime (-1)
 
 data WorkQueue
   = WorkQueue
@@ -204,7 +214,7 @@ type MatchedCombi = MatchedCombi' CHRInx WorkInx
 data SolverReductionStep' c w
   = SolverReductionStep
       { slvredMatchedCombi        :: !(MatchedCombi' c w)
-      , slvredChosenBodyAltInx    :: !Int
+      , slvredChosenBodyAltInx    :: {-# UNPACK #-} !Int
       , slvredNewWork             :: !(Map.Map ConstraintSolvesVia [w])
       }
   | SolverReductionDBG PP_Doc
@@ -229,8 +239,8 @@ instance (PP w) => PP (SolverReductionStep' Int w) where
 -- | Admin for waiting work
 data WaitForVar s
   = WaitForVar
-      { _waitForVarVars      :: CHRWaitForVarSet s
-      , _waitForVarWorkInx   :: WorkInx
+      { _waitForVarVars      :: !(CHRWaitForVarSet s)
+      , _waitForVarWorkInx   :: {-# UNPACK #-} !WorkInx
       }
   deriving (Typeable)
 
@@ -245,19 +255,19 @@ type WaitInx = Int
 data CHRGlobState cnstr guard bprio prio subst env m
   = CHRGlobState
       { _chrgstStore                 :: !(CHRStore cnstr guard bprio prio)                     -- ^ Actual database of rules, to be searched
-      , _chrgstNextFreeRuleInx       :: !CHRInx                                          -- ^ Next free rule identification, used by solving to identify whether a rule has been used for a constraint.
+      , _chrgstNextFreeRuleInx       :: {-# UNPACK #-} !CHRInx                                          -- ^ Next free rule identification, used by solving to identify whether a rule has been used for a constraint.
                                                                                          --   The numbering is applied to constraints inside a rule which can be matched.
       , _chrgstWorkStore             :: !(WorkStore cnstr)                               -- ^ Actual database of solvable constraints
-      , _chrgstNextFreeWorkInx       :: !WorkTime                                        -- ^ Next free work/constraint identification, used by solving to identify whether a rule has been used for a constraint.
+      -- , _chrgstNextFreeWorkInx       :: {-# UNPACK #-} !WorkTime                                        -- ^ Next free work/constraint identification, used by solving to identify whether a rule has been used for a constraint.
       , _chrgstScheduleQueue         :: !(Que.MinPQueue (CHRPrioEvaluatableVal bprio) (CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m (SolverResult subst)))
-      , _chrgstTrace                 :: SolveTrace' cnstr (StoredCHR cnstr guard bprio prio) subst
-      , _chrgstStatNrSolveSteps      :: !Int
+      , _chrgstTrace                 :: !(SolveTrace' cnstr (StoredCHR cnstr guard bprio prio) subst)
+      , _chrgstStatNrSolveSteps      :: {-# UNPACK #-} !Int
       , _chrgstVarToNmMp             :: !VarToNmMp
       }
   deriving (Typeable)
 
 emptyCHRGlobState :: TT.TTCtxt (TT.TrTrKey c) => CHRGlobState c g b p s e m
-emptyCHRGlobState = CHRGlobState emptyCHRStore 0 emptyWorkStore initWorkTime Que.empty emptySolveTrace 0 emptyVarToNmMp
+emptyCHRGlobState = CHRGlobState emptyCHRStore 0 emptyWorkStore Que.empty emptySolveTrace 0 emptyVarToNmMp
 
 -- | Backtrackable state
 data CHRBackState cnstr bprio subst env
@@ -270,11 +280,11 @@ data CHRBackState cnstr bprio subst env
       
       , _chrbstMatchedCombis         :: !(Set.Set MatchedCombi)                                 -- ^ all combis of chr + work which were reduced, to prevent this from happening a second time (when propagating)
       
-      , _chrbstFreshVar              :: !Int                                                    -- ^ for fresh var
+      , _chrbstFreshVar              :: {-# UNPACK #-} !Int                                                    -- ^ for fresh var
       , _chrbstSolveSubst            :: !subst                                                  -- ^ subst for variable bindings found during solving, not for the ones binding rule metavars during matching but for the user ones (in to be solved constraints)
       , _chrbstWaitForVar            :: !(Map.Map (VarLookupKey subst) [WaitForVar subst])       -- ^ work waiting for a var to be bound
       
-      , _chrbstReductionSteps        :: [SolverReductionStep]                                   -- ^ trace of reduction steps taken (excluding solve steps)
+      , _chrbstReductionSteps        :: ![SolverReductionStep]                                   -- ^ trace of reduction steps taken (excluding solve steps)
       }
   deriving (Typeable)
 
@@ -313,11 +323,11 @@ type MonoBacktrackPrio cnstr guard bprio prio subst env m
 -- | Solver solution
 data SolverResult subst =
   SolverResult
-    { slvresSubst                 :: subst                            -- ^ global found variable bindings
-    , slvresResidualCnstr         :: [WorkInx]                        -- ^ constraints which are residual, no need to solve, etc, leftover when ready, taken from backtrack state
-    , slvresWorkCnstr             :: [WorkInx]                        -- ^ constraints which are still unsolved, taken from backtrack state
-    , slvresWaitVarCnstr          :: [WorkInx]                        -- ^ constraints which are still unsolved, waiting for variable resolution
-    , slvresReductionSteps        :: [SolverReductionStep]            -- ^ how did we get to the result (taken from the backtrack state when a result is given back)
+    { slvresSubst                 :: !subst                            -- ^ global found variable bindings
+    , slvresResidualCnstr         :: ![WorkInx]                        -- ^ constraints which are residual, no need to solve, etc, leftover when ready, taken from backtrack state
+    , slvresWorkCnstr             :: ![WorkInx]                        -- ^ constraints which are still unsolved, taken from backtrack state
+    , slvresWaitVarCnstr          :: ![WorkInx]                        -- ^ constraints which are still unsolved, waiting for variable resolution
+    , slvresReductionSteps        :: ![SolverReductionStep]            -- ^ how did we get to the result (taken from the backtrack state when a result is given back)
     }
 
 -------------------------------------------------------------------------------------------
@@ -339,6 +349,7 @@ class ( IsCHRConstraint env c s
 mkLabel ''WaitForVar
 mkLabel ''StoredCHR
 mkLabel ''CHRStore
+mkLabel ''WorkOrFreeList
 mkLabel ''WorkStore
 mkLabel ''WorkQueue
 mkLabel ''CHRGlobState
@@ -377,29 +388,12 @@ instance (PP (TT.TrTrKey c), PP c, PP g, PP bp, PP p) => PP (StoredCHR c g bp p)
 addRule :: MonoBacktrackPrio c g bp p s e m => Rule c g bp p -> CHRMonoBacktrackPrioT c g bp p s e m ()
 addRule chr = do
     i <- modifyAndGet (fstl ^* chrgstNextFreeRuleInx) $ \i -> (i, i + 1)
-    {-
-    let ks  = map chrToKey $ ruleHead chr
-    fstl ^* chrgstStore ^* chrstoreTable =$: IntMap.insert i (StoredCHR ks [] chr i)
-    fstl ^* chrgstStore ^* chrstoreTrie =$: \t ->
-      foldr (TreeTrie.unionWith (++)) t [ TreeTrie.singleton k [CHRConstraintInx i j] | (k,c,j) <- zip3 ks (ruleHead chr) [0..] ]
-    -}
     let ks = map TT.toTreeTrieKey $ ruleHead chr
     fstl ^* chrgstStore ^* chrstoreTable =$: IntMap.insert i (StoredCHR ks chr i)
     fstl ^* chrgstStore ^* chrstoreTrie =$: \t ->
       foldr (TT.unionWith (++)) t [ TT.singleton k [CHRConstraintInx i j] | (k,c,j) <- zip3 ks (ruleHead chr) [0..] ]
     return ()
 
-{-
--- | Add a rule as a CHR
-addRule2 :: MonoBacktrackPrio c g bp p s e m => Rule c g bp p -> CHRMonoBacktrackPrioT c g bp p s e m ()
-addRule2 chr = do
-    i <- modifyAndGet (fstl ^* chrgstNextFreeRuleInx) $ \i -> (i, i + 1)
-    let ks = map TT.toTreeTrieKey $ ruleHead chr
-    fstl ^* chrgstStore ^* chrstoreTable =$: IntMap.insert i (StoredCHR [] ks chr i)
-    fstl ^* chrgstStore ^* chrstoreTrie2 =$: \t ->
-      foldr (TT.unionWith (++)) t [ TT.singleton k [CHRConstraintInx i j] | (k,c,j) <- zip3 ks (ruleHead chr) [0..] ]
-    return ()
--}
 
 -- | Add work to the rule work queue
 addToWorkQueue :: MonoBacktrackPrio c g bp p s e m => WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m ()
@@ -495,11 +489,14 @@ splitFromWorkQueue = do
           return $ Just workInx
 
 -- | Add a constraint to be solved or residualised
-addConstraintAsWork :: MonoBacktrackPrio c g bp p s e m => c -> CHRMonoBacktrackPrioT c g bp p s e m (ConstraintSolvesVia, WorkInx)
+addConstraintAsWork
+  :: MonoBacktrackPrio c g bp p s e m
+  => c
+  -> CHRMonoBacktrackPrioT c g bp p s e m (ConstraintSolvesVia, WorkInx)
 addConstraintAsWork c = do
     let via = cnstrSolvesVia c
         addw i w = do
-          fstl ^* chrgstWorkStore ^* wkstoreTable =$: IntMap.insert i w
+          fstl ^* chrgstWorkStore ^* wkstoreTable =$: IntMap.insert i (WorkWork w)
           return (via,i)
     i <- fresh
     w <- case via of
@@ -529,7 +526,7 @@ addConstraintAsWork c = do
             slvSucces
 -}
   where
-    fresh = modifyAndGet (fstl ^* chrgstNextFreeWorkInx) $ \i -> (i, i + 1)
+    fresh = modifyAndGet (fstl ^* chrgstWorkStore ^* wkstoreNextFreeWorkInx) $ \i -> (i, i + 1)
 
 -------------------------------------------------------------------------------------------
 --- Solver combinators
@@ -592,10 +589,19 @@ slvScheduleRun = slvSplitFromSchedule >>= maybe mzero snd
 -------------------------------------------------------------------------------------------
 
 lkupWork :: MonoBacktrackPrio c g bp p s e m => WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m (Work c)
-lkupWork i = fmap (IntMap.findWithDefault (panic "MBP.wkstoreTable.lookup") i) $ getl $ fstl ^* chrgstWorkStore ^* wkstoreTable
+lkupWork i = fmap (_worfWork . IntMap.findWithDefault (panic "MBP.wkstoreTable.lookup") i) $ getl $ fstl ^* chrgstWorkStore ^* wkstoreTable
+{-# INLINE lkupWork #-}
+
+addWorkToFreeList :: MonoBacktrackPrio c g bp p s e m => WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m ()
+addWorkToFreeList i = (fstl ^* chrgstWorkStore) =$: \st -> 
+    st { _wkstoreTable = IntMap.insert i (WorkFreeList $ _wkstoreNextFreeListInx st) $ _wkstoreTable st
+       , _wkstoreNextFreeListInx = i
+       }
+{-# INLINE addWorkToFreeList #-}
 
 lkupChr :: MonoBacktrackPrio c g bp p s e m => CHRInx -> CHRMonoBacktrackPrioT c g bp p s e m (StoredCHR c g bp p)
 lkupChr  i = fmap (IntMap.findWithDefault (panic "MBP.chrSolve.chrstoreTable.lookup") i) $ getl $ fstl ^* chrgstStore ^* chrstoreTable
+{-# INLINE lkupChr #-}
 
 -- | Convert
 cvtSolverReductionStep :: MonoBacktrackPrio c g bp p s e m => SolverReductionStep' CHRInx WorkInx -> CHRMonoBacktrackPrioT c g bp p s e m (SolverReductionStep' (StoredCHR c g bp p) (Work c))
@@ -652,6 +658,7 @@ runCHRMonoBacktrackPrioT
      -> CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m (SolverResult subst)
      -> m ([SolverResult subst], (CHRGlobState cnstr guard bprio prio subst env m, CHRBackState cnstr bprio subst env))
 runCHRMonoBacktrackPrioT gs bs {- bp -} m = observeStateAllT (gs, bs {- _chrbstBacktrackPrio=bp -}) m
+{-# INLINABLE runCHRMonoBacktrackPrioT #-}
 
 -------------------------------------------------------------------------------------------
 --- Solver: Intermediate structures
@@ -660,7 +667,7 @@ runCHRMonoBacktrackPrioT gs bs {- bp -} m = observeStateAllT (gs, bs {- _chrbstB
 -- | Intermediate Solver structure
 data FoundChr c g bp p
   = FoundChr
-      { foundChrInx             :: !CHRInx
+      { foundChrInx             :: {-# UNPACK #-} !CHRInx
       , foundChrChr             :: !(StoredCHR c g bp p)
       , foundChrCnstr           :: ![WorkInx]
       }
@@ -668,7 +675,7 @@ data FoundChr c g bp p
 -- | Intermediate Solver structure
 data FoundWorkInx c g bp p
   = FoundWorkInx
-      { foundWorkInxInx         :: !CHRConstraintInx
+      { foundWorkInxInx         :: {-# UNPACK #-} !CHRConstraintInx
       , foundWorkInxChr         :: !(StoredCHR c g bp p)
       , foundWorkInxWorkInxs    :: ![[WorkInx]]
       }
@@ -676,10 +683,9 @@ data FoundWorkInx c g bp p
 -- | Intermediate Solver structure: sorting key for matches
 data FoundMatchSortKey bp p s
   = FoundMatchSortKey
-      { {- foundMatchSortKeyBacktrackPrio  :: !(CHRPrioEvaluatableVal bp)
-      , -} foundMatchSortKeyPrio           :: !(Maybe (s,p))
-      , foundMatchSortKeyWaitSize       :: !Int
-      , foundMatchSortKeyTextOrder      :: !CHRInx
+      { foundMatchSortKeyPrio           :: !(Maybe (s,p))
+      , foundMatchSortKeyWaitSize       :: {-# UNPACK #-} !Int
+      , foundMatchSortKeyTextOrder      :: {-# UNPACK #-} !CHRInx
       }
 
 instance Show (FoundMatchSortKey bp p s) where
@@ -700,7 +706,7 @@ compareFoundMatchSortKey cmp_rp (FoundMatchSortKey {- bp1 -} rp1 ws1 to1) (Found
 -- | Intermediate Solver structure: body alternative, together with index position
 data FoundBodyAlt c bp
   = FoundBodyAlt
-      { foundBodyAltInx             :: !Int
+      { foundBodyAltInx             :: {-# UNPACK #-} !Int
       , foundBodyAltBacktrackPrio   :: !(CHRPrioEvaluatableVal bp)
       , foundBodyAltAlt             :: !(RuleBodyAlt c bp)
       }
@@ -730,7 +736,7 @@ instance (PP s, PP p, PP c, PP bp, PP (VarLookupKey s), PP (CHRPrioEvaluatableVa
 -- | Intermediate Solver structure: all matched combis with their backtrack prioritized body alternatives
 data FoundWorkMatch c g bp p s
   = FoundWorkMatch
-      { foundWorkMatchInx       :: !CHRConstraintInx
+      { foundWorkMatchInx       :: {-# UNPACK #-} !CHRConstraintInx
       , foundWorkMatchChr       :: !(StoredCHR c g bp p)
       , foundWorkMatchWorkInx   :: ![WorkInx]
       , foundWorkMatchSlvMatch  :: !(Maybe (FoundSlvMatch c g bp p s))
@@ -809,10 +815,10 @@ chrSolve opts env = slv
     dbg | chrslvOptGatherDebugInfo opts = \i -> sndl ^* chrbstReductionSteps =$: (SolverReductionDBG i :)
         | otherwise                     = \_ -> return ()
     -- gather trace info
-    -- trc | chrslvOptGatherTraceInfo opts = \i -> fstl ^* chrgstTrace =$: (i :)
-    --     | otherwise                     = \_ -> return ()
+    trc | chrslvOptGatherTraceInfo opts = \i -> fstl ^* chrgstTrace =$: (i :)
+        | otherwise                     = \_ -> return ()
     -- leave this unconditional, does not seem not make a difference for performance
-    trc i = fstl ^* chrgstTrace =$: (i :)
+    -- trc i = fstl ^* chrgstTrace =$: (i :)
     -- solve
     slv = do
         fstl ^* chrgstStatNrSolveSteps =$: (+1)
