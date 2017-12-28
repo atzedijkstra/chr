@@ -4,7 +4,7 @@
 name:                chr-data
 version:             0.1.0.0
 synopsis:            Datatypes required for chr library
--- description:         
+description:         Datatypes required for chr library, in particular searching on treestructures, lookup abstraction, substitutions, etc. These are also used (via uhc-util) in UHC.
 homepage:            https://github.com/atzedijkstra/chr
 Bug-Reports:         https://github.com/atzedijkstra/chr/issues
 license:             BSD3
@@ -25,6 +25,8 @@ library
   exposed-modules:     
     CHR.Utils,
     CHR.Data.Lens,
+    CHR.Data.Lens.FCLabels,
+    CHR.Data.Lens.MicroLens,
     CHR.Data.TreeTrie,
     CHR.Data.Lookup,
     CHR.Data.Lookup.Types,
@@ -39,8 +41,6 @@ library
     CHR.Data.AssocL,
     CHR.Data.Fresh
   other-modules:       
-    -- CHR.Data.Lens.FCLabels,
-    CHR.Data.Lens.MicroLens
   default-extensions:
     NoMagicHash,
     DeriveGeneric,
@@ -57,7 +57,7 @@ library
     hashable >= 1.2.4,
     unordered-containers >= 0.2.7,
     mtl >= 2,
-    -- fclabels >= 2.0.3,
+    fclabels >= 2.0.3,
     microlens >= 0.4,
     microlens-mtl >= 0.1.6.1,
     microlens-th >= 0.4,

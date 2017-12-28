@@ -4,7 +4,7 @@
 name:                chr-parse
 version:             0.1.0.0
 synopsis:            Parsing for chr library
--- description:         
+description:         Parsing for chr library, currently wrapping around the parsing lib from uulib and adding some utilities
 homepage:            https://github.com/atzedijkstra/chr
 Bug-Reports:         https://github.com/atzedijkstra/chr/issues
 license:             BSD3

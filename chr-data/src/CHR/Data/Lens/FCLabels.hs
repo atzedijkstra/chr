@@ -48,8 +48,9 @@ import qualified Control.Monad.State as MS
 import           Control.Monad.Trans
 import           Control.Category
 
-import           Data.Label hiding (Lens)
+import           Data.Label hiding (Lens, lens)
 import qualified Data.Label.Base as L
+import qualified Data.Label as L
 import           Data.Label.Monadic((=:), (=.), modifyAndGet)
 import qualified Data.Label.Monadic as M
 import qualified Data.Label.Partial as P

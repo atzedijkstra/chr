@@ -35,7 +35,6 @@ module CHR.Types.Rule
   where
 
 import qualified CHR.Data.TreeTrie              as TT
--- import           UHC.Util.CHR.Base
 import           CHR.Data.VarMp
 import           CHR.Utils
 import           Data.Monoid

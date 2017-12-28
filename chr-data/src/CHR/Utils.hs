@@ -18,9 +18,9 @@ module CHR.Utils
   
     -- * List
   , hdAndTl', hdAndTl
-  , maybeNull
   -}
-    maybeHd
+    maybeNull
+  , maybeHd
   {-
   , wordsBy
   , initlast, initlast2
@@ -91,33 +91,30 @@ module CHR.Utils
     -- * Ordering
     -}
   , orderingLexic
-  {-
   , orderingLexicList
   
+  {-
     -- * Misc
   -}
   , panic
-  {-
   , isSortedByOn
   , sortOnLazy
   , sortOn
-  -}
   , sortByOn
-  {-
   , groupOn
   , groupByOn
-  -}
   , groupSortOn
-  {-
   , groupSortByOn
+  {-
   , nubOn
   
   , consecutiveBy
   
   , partitionAndRebuild
-  
+  -}
     -- * Maybe
   , panicJust
+  {-
   , ($?)
   , orMb
   , maybeAnd
@@ -474,8 +471,6 @@ panic m = error ("panic: " ++ m)
 -- group/sort/nub combi's
 -------------------------------------------------------------------------
 
-{-
-
 isSortedByOn :: (b -> b -> Ordering) -> (a -> b) -> [a] -> Bool
 isSortedByOn cmp sel l
   = isSrt l
@@ -487,8 +482,6 @@ isSortedByOn cmp sel l
 sortOnLazy :: Ord b => (a -> b) -> [a] -> [a]
 sortOnLazy = sortByOn compare
 {-# INLINE sortOnLazy #-}
-
--}
 
 #if __GLASGOW_HASKELL__ >= 710
 #else
@@ -509,13 +502,13 @@ groupOn sel = groupBy ((==) `on` sel) -- (\e1 e2 -> sel e1 == sel e2)
 groupSortOn :: Ord b => (a -> b) -> [a] -> [[a]]
 groupSortOn sel = groupOn sel . sortOn sel
 
-{-
 groupByOn :: (b -> b -> Bool) -> (a -> b) -> [a] -> [[a]]
 groupByOn eq sel = groupBy (eq `on` sel) -- (\e1 e2 -> sel e1 `eq` sel e2)
 
 groupSortByOn :: (b -> b -> Ordering) -> (a -> b) -> [a] -> [[a]]
 groupSortByOn cmp sel = groupByOn (\e1 e2 -> cmp e1 e2 == EQ) sel . sortByOn cmp sel
 
+{-
 nubOn :: Eq b => (a->b) -> [a] -> [a]
 nubOn sel = nubBy ((==) `on` sel) -- (\a1 a2 -> sel a1 == sel a2)
 
@@ -575,7 +568,6 @@ orderingLexic :: Ordering -> Ordering -> Ordering
 orderingLexic o1 o2 = if o1 == EQ then o2 else o1
 {-# INLINE orderingLexic #-}
 
-{-
 
 -------------------------------------------------------------------------
 -- Maybe
@@ -586,6 +578,7 @@ panicJust :: String -> Maybe a -> a
 panicJust m = maybe (panic m) id
 {-# INLINE panicJust #-}
 
+{-
 infixr 0  $?
 
 ($?) :: (a -> Maybe b) -> Maybe a -> Maybe b

@@ -112,6 +112,7 @@ instance (Lookup lkup k v) => Lookup (Stacks lkup) k v where
   lookup  k  = listToMaybe . catMaybes . List.map (lookup k) . unStacks
   alter f k  = Stacks . List.map (alter f k) . unStacks
   null       = all null . unStacks
+  size       = sum . List.map size . unStacks
   toList     = concatMap toList . unStacks
   fromList   = lifts . fromList
 

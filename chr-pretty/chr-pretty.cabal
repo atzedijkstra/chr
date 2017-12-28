@@ -4,7 +4,7 @@
 name:                chr-pretty
 version:             0.1.0.0
 synopsis:            Pretty printing for chr library
--- description:         
+description:         Pretty printing for chr library, a simplified implementation for the pretty printing API from uulib
 homepage:            https://github.com/atzedijkstra/chr
 Bug-Reports:         https://github.com/atzedijkstra/chr/issues
 license:             BSD3

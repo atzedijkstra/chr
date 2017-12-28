@@ -293,9 +293,11 @@ type CHRFullState cnstr guard bprio prio subst env m
 
 gst :: Lens (CHRFullState cnstr guard bprio prio subst env m) (CHRGlobState cnstr guard bprio prio subst env m)
 gst = fstl
+{-# INLINE gst #-}
 
 bst :: Lens (CHRFullState cnstr guard bprio prio subst env m) (CHRBackState cnstr bprio subst env)
 bst = sndl
+{-# INLINE bst #-}
 
 -- | All required behavior, as alias
 {-

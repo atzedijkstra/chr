@@ -7,6 +7,7 @@ module CHR.Data.Lens.MicroLens
   ( 
     (:->)
   , Lens
+  -- , lens
 
   -- * Access
   
@@ -43,28 +44,16 @@ module CHR.Data.Lens.MicroLens
   , snd3l
   , trd3l
   
-  {-
   -- * Wrappers
   
   , isoMb
   , isoMbWithDefault
-  -}
 
   )
   where
 
 import qualified Control.Monad.State as MS
-{-
-import           Control.Monad.Trans
-import           Control.Category
-
-import           Data.Label hiding (Lens)
-import qualified Data.Label.Base as L
-import           Data.Label.Monadic((=:), (=.), modifyAndGet)
-import qualified Data.Label.Monadic as M
-import qualified Data.Label.Partial as P
--}
-import           Lens.Micro                 hiding (Lens)
+import           Lens.Micro                 hiding (Lens, lens)
 import qualified Lens.Micro                 as L
 import           Lens.Micro.Mtl
 import           Lens.Micro.TH
@@ -75,6 +64,10 @@ import           CHR.Utils
 -- * Type aliases
 type Lens a b = Lens' a b
 type a :-> b = Lens' a b
+
+lens :: (a -> b) -> (a -> b -> a) -> (a :-> b)
+lens = L.lens
+{-# INLINE lens #-}
 
 -- * Operator interface for composition
 
@@ -191,14 +184,14 @@ trd3l :: Lens (a,b,c) c
 trd3l = (_3)
 {-# INLINE trd3l #-}
 
-{-
 -- * Wrappers
 
 -- | Wrapper around a Maybe with a default in case of Nothing
 isoMbWithDefault :: o -> (f :-> Maybe o) -> (f :-> o)
-isoMbWithDefault dflt f = iso (Iso (maybe dflt id) (Just)) . f
+-- isoMbWithDefault dflt f = iso (Iso (maybe dflt id) (Just)) . f
+isoMbWithDefault dflt f = lens (\a -> maybe dflt id $ a ^. f) (\a b -> set f (Just b) a)
 
 -- | Wrapper around a Maybe with an embedded panic in case of Nothing, with a panic message
 isoMb :: String -> (f :-> Maybe o) -> (f :-> o)
-isoMb msg f = iso (Iso (panicJust msg) (Just)) . f
--}
+-- isoMb msg f = iso (Iso (panicJust msg) (Just)) . f
+isoMb msg f = lens (\a -> panicJust msg $ a ^. f) (\a b -> set f (Just b) a)
