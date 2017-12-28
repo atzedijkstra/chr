@@ -272,14 +272,6 @@ instance IsConstraint C where
   cnstrSolvesVia (CB_Ne _ _) = ConstraintSolvesVia_Solve
   cnstrSolvesVia (CB_Fail  ) = ConstraintSolvesVia_Fail
 
-instance IsCHRGuard E G S where
-
-instance IsCHRConstraint E C S where
-
-instance IsCHRPrio E P S where
-
-instance IsCHRBacktrackPrio E P S where
-
 instance CHRCheckable E G S where
   chrCheckM e g =
     case g of
@@ -420,8 +412,4 @@ instance GTermAs C G P P Tm where
 
 --------------------------------------------------------
 -- leq example, backtrack prio specific
-
-instance MBP.IsCHRSolvable E C G P P S
-
--- instance MBP.MonoBacktrackPrio C G P P S E IO
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FunctionalDependencies, UndecidableInstances, ExistentialQuantification, ScopedTypeVariables, StandaloneDeriving, GeneralizedNewtypeDeriving, TemplateHaskell, NoMonomorphismRestriction #-}
+{-# LANGUAGE ConstraintKinds, MultiParamTypeClasses, FlexibleInstances, FunctionalDependencies, UndecidableInstances, ExistentialQuantification, ScopedTypeVariables, StandaloneDeriving, GeneralizedNewtypeDeriving, TemplateHaskell, NoMonomorphismRestriction #-}
 
 -------------------------------------------------------------------------------------------
 --- Constraint Handling Rules
@@ -291,7 +291,8 @@ instance Ord Prio where
 --- Constraint API
 -------------------------------------------------------------------------------------------
 
--- | (Class alias) API for constraint requirements
+-- | Alias API for constraint requirements
+{-
 class ( CHRMatchable env c subst
       -- , CHRBuiltinSolvable env c subst
       , VarExtractable c
@@ -308,12 +309,31 @@ class ( CHRMatchable env c subst
       -- , PP (TTKey c)
       , PP (TT.TrTrKey c)
       ) => IsCHRConstraint env c subst
+-}
+type IsCHRConstraint env c subst
+    = ( CHRMatchable env c subst
+      -- , CHRBuiltinSolvable env c subst
+      , VarExtractable c
+      , VarUpdatable c subst
+      , Typeable c
+      -- , Serialize c
+      -- , TTKeyable c
+      , TT.TreeTrieKeyable c
+      , IsConstraint c
+      , Ord c
+      -- , Ord (TTKey c)
+      , Ord (TT.TrTrKey c)
+      , PP c
+      -- , PP (TTKey c)
+      , PP (TT.TrTrKey c)
+      )
 
 -------------------------------------------------------------------------------------------
 --- Guard API
 -------------------------------------------------------------------------------------------
 
--- | (Class alias) API for guard requirements
+-- | Alias API for guard requirements
+{-
 class ( CHRCheckable env g subst
       , VarExtractable g
       , VarUpdatable g subst
@@ -321,26 +341,49 @@ class ( CHRCheckable env g subst
       -- , Serialize g
       , PP g
       ) => IsCHRGuard env g subst
+-}
+type IsCHRGuard env g subst
+    = ( CHRCheckable env g subst
+      , VarExtractable g
+      , VarUpdatable g subst
+      , Typeable g
+      -- , Serialize g
+      , PP g
+      )
 
 -------------------------------------------------------------------------------------------
 --- Prio API
 -------------------------------------------------------------------------------------------
 
--- | (Class alias) API for priority requirements
+-- | Alias API for priority requirements
+{-
 class ( CHRPrioEvaluatable env p subst
       , Typeable p
       -- , Serialize p
       , PP p
       ) => IsCHRPrio env p subst
+-}
+type IsCHRPrio env p subst
+    = ( CHRPrioEvaluatable env p subst
+      , Typeable p
+      -- , Serialize p
+      , PP p
+      )
 
--- instance {-# OVERLAPPABLE #-} IsCHRPrio env () subst
-
--- | (Class alias) API for backtrack priority requirements
+-- | Alias API for backtrack priority requirements
+{-
 class ( IsCHRPrio env bp subst
       , CHRMatchable env bp subst
       , PP (CHRPrioEvaluatableVal bp)
       -- -- , Num (CHRPrioEvaluatableVal bp)
       ) => IsCHRBacktrackPrio env bp subst
+-}
+type IsCHRBacktrackPrio env bp subst
+    = ( IsCHRPrio env bp subst
+      , CHRMatchable env bp subst
+      , PP (CHRPrioEvaluatableVal bp)
+      -- -- , Num (CHRPrioEvaluatableVal bp)
+      )
 
 -------------------------------------------------------------------------------------------
 --- What a constraint must be capable of

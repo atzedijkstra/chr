@@ -31,13 +31,6 @@ module CHR.Types.Rule
   , (|>), (=|)
   , (=!), (=!!)
   , (=@), (@=)
-  
-  -- , MkSolverConstraint(..)
-  -- , MkSolverGuard(..)
-  -- , MkSolverBacktrackPrio(..)
-  -- , MkSolverPrio(..)
-  -- 
-  -- , MkRule(mkRule)
   )
   where
 
@@ -98,12 +91,6 @@ ruleBody :: Rule c g bp p -> [c]
 ruleBody = fst . ruleBody'
 {-# INLINE ruleBody #-}
 
-{-
--- | Backwards compatibility: if only one alternative, extract it, ignore other alts
-ruleBodyBuiltin :: Rule c g bp p -> [b]
-ruleBodyBuiltin = snd . ruleBody'
-{-# INLINE ruleBodyBuiltin #-}
--}
 
 -- | Total nr of cnstrs in rule
 ruleSz :: Rule c g bp p -> Int
@@ -139,35 +126,8 @@ instance (PP c, PP g, PP p, PP bp) => PP (Rule c g bp p) where
 -- type instance TTKey (Rule cnstr guard bprio prio) = TTKey cnstr
 type instance TT.TrTrKey (Rule cnstr guard bprio prio) = TT.TrTrKey cnstr
 
-{-
-instance (TTKeyable cnstr) => TTKeyable (Rule cnstr guard bprio prio) where
-  toTTKey' o chr = toTTKey' o $ head $ ruleHead chr
--}
-
 instance (TT.TreeTrieKeyable cnstr) => TT.TreeTrieKeyable (Rule cnstr guard bprio prio) where
   toTreeTriePreKey1 chr = TT.prekey1Delegate $ head $ ruleHead chr
-
--------------------------------------------------------------------------------------------
---- Existentially quantified Rule representations to allow for mix of arbitrary universes
--------------------------------------------------------------------------------------------
-
-{-
-data CHRRule env subst
-  = CHRRule
-      { chrRule :: Rule (CHRConstraint env subst) (CHRGuard env subst) () ()
-      }
-  deriving (Typeable)
-
-type instance TTKey (CHRRule env subst) = TTKey (CHRConstraint env subst)
-
-deriving instance Typeable (CHRRule env subst)
-
-instance Show (CHRRule env subst) where
-  show _ = "CHRRule"
-
-instance PP (CHRRule env subst) where
-  pp (CHRRule r) = pp r
--}
 
 -------------------------------------------------------------------------------------------
 --- Var instances
@@ -197,133 +157,13 @@ instance (VarUpdatable c s, VarUpdatable g s, VarUpdatable bp s, VarUpdatable p 
 -------------------------------------------------------------------------------------------
 --- Construction: Rule
 -------------------------------------------------------------------------------------------
-
-class MkSolverConstraint c c' where
-  toSolverConstraint :: c' -> c
-  fromSolverConstraint :: c -> Maybe c'
-
-instance {-# INCOHERENT #-} MkSolverConstraint c c where
-  toSolverConstraint = id
-  fromSolverConstraint = Just
-
-{-  
-instance {-# OVERLAPS #-}
-         ( IsCHRConstraint e c s
-         , TTKey (CHRConstraint e s) ~ TTKey c
-         , ExtrValVarKey (CHRConstraint e s) ~ ExtrValVarKey c
-         ) => MkSolverConstraint (CHRConstraint e s) c where
-  toSolverConstraint = CHRConstraint
-  fromSolverConstraint (CHRConstraint c) = cast c
--}
-
-class MkSolverGuard g g' where
-  toSolverGuard :: g' -> g
-  fromSolverGuard :: g -> Maybe g'
-
-instance {-# INCOHERENT #-} MkSolverGuard g g where
-  toSolverGuard = id
-  fromSolverGuard = Just
-
-{-
-instance {-# OVERLAPS #-}
-         ( IsCHRGuard e g s
-         , ExtrValVarKey (CHRGuard e s) ~ ExtrValVarKey g
-         ) => MkSolverGuard (CHRGuard e s) g where
-  toSolverGuard = CHRGuard
-  fromSolverGuard (CHRGuard g) = cast g
--}
-
-{-
-class MkSolverBuiltin b b' where
-  toSolverBuiltin :: b' -> b
-  fromSolverBuiltin :: b -> Maybe b'
-
-instance {-# INCOHERENT #-} MkSolverBuiltin b b where
-  toSolverBuiltin = id
-  fromSolverBuiltin = Just
--}
-
-{-
-instance {-# OVERLAPS #-}
-         ( IsCHRBuiltin e b s
-         -- , ExtrValVarKey (CHRBuiltin e s) ~ ExtrValVarKey b
-         ) => MkSolverBuiltin (CHRBuiltin e s) b where
-  toSolverBuiltin = CHRBuiltin
-  fromSolverBuiltin (CHRBuiltin b) = cast b
--}
-
-class MkSolverPrio p p' where
-  toSolverPrio :: p' -> p
-  fromSolverPrio :: p -> Maybe p'
-
-instance {-# INCOHERENT #-} MkSolverPrio p p where
-  toSolverPrio = id
-  fromSolverPrio = Just
-
-{-
-instance {-# OVERLAPS #-}
-         ( IsCHRPrio e p s
-         -- , ExtrValVarKey (CHRPrio e s) ~ ExtrValVarKey p
-         ) => MkSolverPrio (CHRPrio e s) p where
-  toSolverPrio = CHRPrio
-  fromSolverPrio (CHRPrio p) = cast p
--}
-
-class MkSolverBacktrackPrio p p' where
-  toSolverBacktrackPrio :: p' -> p
-  fromSolverBacktrackPrio :: p -> Maybe p'
-
-instance {-# INCOHERENT #-} MkSolverBacktrackPrio p p where
-  toSolverBacktrackPrio = id
-  fromSolverBacktrackPrio = Just
-
-{-
-class MkRule r where
-  type SolverConstraint r :: *
-  type SolverGuard r :: *
-  type SolverBacktrackPrio r :: *
-  type SolverPrio r :: *
-  -- | Make rule
-  mkRule :: [SolverConstraint r] -> Int -> [SolverGuard r] -> [SolverConstraint r] -> [SolverConstraint r] -> Maybe (SolverPrio r) -> r
-  -- | Add guards to rule
-  guardRule :: [SolverGuard r] -> r -> r
-  -- | Add prio to rule
-  prioritizeRule :: SolverPrio r -> r -> r
-  -- | Add backtrack prio to rule
-  prioritizeBacktrackRule :: SolverBacktrackPrio r -> r -> r
-  -- | Add label/name to rule
-  labelRule :: String -> r -> r
-
-instance MkRule (Rule c g bp p) where
-  type SolverConstraint (Rule c g bp p) = c
-  type SolverGuard (Rule c g bp p) = g
-  type SolverBacktrackPrio (Rule c g bp p) = bp
-  type SolverPrio (Rule c g bp p) = p
-  mkRule h l g b bi p = Rule h l g [RuleBodyAlt Nothing b] Nothing p Nothing
-  guardRule g r = r {ruleGuard = ruleGuard r ++ g}
-  prioritizeRule p r = r {rulePrio = Just p}
-  prioritizeBacktrackRule p r = r {ruleBacktrackPrio = Just p}
-  labelRule l r = r {ruleName = Just l}
--}
-
+  
 mkRule h l g b bi p = Rule h l g [RuleBodyAlt Nothing b] Nothing p Nothing
 guardRule g r = r {ruleGuard = ruleGuard r ++ g}
 prioritizeRule p r = r {rulePrio = Just p}
 prioritizeBacktrackRule p r = r {ruleBacktrackPrio = Just p}
 labelRule l r = r {ruleName = Just l}
 
-{-
-instance MkRule (CHRRule e s) where
-  type SolverConstraint (CHRRule e s) = (CHRConstraint e s)
-  type SolverGuard (CHRRule e s) = (CHRGuard e s)
-  type SolverBuiltin (CHRRule e s) = ()
-  type SolverPrio (CHRRule e s) = ()
-  mkRule h l g b bi p = CHRRule $ mkRule h l g b bi p
-  guardRule g (CHRRule r) = CHRRule $ guardRule g r
-  prioritizeRule p (CHRRule r) = CHRRule $ prioritizeRule p r
-  prioritizeBacktrackRule p (CHRRule r) = CHRRule $ prioritizeBacktrackRule p r
-  labelRule p (CHRRule r) = CHRRule $ labelRule p r
--}
 
 infixl  6 /\
 infixl  5 \!
@@ -346,40 +186,13 @@ c /\ b = RuleBodyAlt Nothing (c ++ b)
 (\!) :: RuleBodyAlt c p -> p -> RuleBodyAlt c p
 r \! p = r {rbodyaltBacktrackPrio = Just p}
 
-{-
-(<=>>), (==>>) :: forall r c1 c2 c3 . (MkRule r, MkSolverConstraint (SolverConstraint r) c1, MkSolverConstraint (SolverConstraint r) c2, MkSolverConstraint (SolverConstraint r) c3)
-  => [c1] -> ([c2], [c3]) -> r
--- | Construct simplification rule out of head, body, and builtin constraints
-hs <=>>  (bs,bis) = mkRule (map toSolverConstraint hs) (length hs) [] (map toSolverConstraint bs) (map toSolverConstraint bis) Nothing
--- | Construct propagation rule out of head, body, and builtin constraints
-hs  ==>>  (bs,bis) = mkRule (map toSolverConstraint hs) 0 [] (map toSolverConstraint bs) (map toSolverConstraint bis) Nothing
--}
-
 -- | Construct simplification rule out of head, body, and builtin constraints
 hs <=>>  (bs,bis) = mkRule hs (length hs) [] bs bis Nothing
 -- | Construct propagation rule out of head, body, and builtin constraints
 hs  ==>>  (bs,bis) = mkRule hs 0 [] bs bis Nothing
 
-{-
-(<\>>) :: forall r c1 c2 c3 . (MkRule r, MkSolverConstraint (SolverConstraint r) c1, MkSolverConstraint (SolverConstraint r) c2, MkSolverConstraint (SolverConstraint r) c3)
-  => ([c1],[c1]) -> ([c2],[c3]) -> r
--- | Construct simpagation rule out of head, body, and builtin constraints
-(hsprop,hssimp) <\>>  (bs,bis) = mkRule (map toSolverConstraint $ hssimp ++ hsprop) (length hssimp) [] (map toSolverConstraint bs) (map toSolverConstraint bis) Nothing
--}
-
 -- | Construct simpagation rule out of head, body, and builtin constraints
 (hsprop,hssimp) <\>>  (bs,bis) = mkRule (hssimp ++ hsprop) (length hssimp) [] (bs) (bis) Nothing
-
-{-
-{-# DEPRECATED (<==>) "Use (<=>)" #-}
-(<==>), (==>), (<=>) :: forall r c1 c2 . (MkRule r, MkSolverConstraint (SolverConstraint r) c1, MkSolverConstraint (SolverConstraint r) c2)
-  => [c1] -> [c2] -> r
--- | Construct simplification rule out of head and body constraints
-hs <==>  bs = mkRule (map toSolverConstraint hs) (length hs) [] (map toSolverConstraint bs) [] Nothing
--- | Construct propagation rule out of head and body constraints
-hs  ==>  bs = mkRule (map toSolverConstraint hs) 0 [] (map toSolverConstraint bs) [] Nothing
-(<=>) = (<==>)
--}
 
 -- | Construct simplification rule out of head and body constraints
 hs <==>  bs = mkRule (hs) (length hs) [] (bs) [] Nothing
@@ -387,24 +200,8 @@ hs <==>  bs = mkRule (hs) (length hs) [] (bs) [] Nothing
 hs  ==>  bs = mkRule (hs) 0 [] (bs) [] Nothing
 (<=>) = (<==>)
 
-{-
-(<\>) :: forall r c1 c2 . (MkRule r, MkSolverConstraint (SolverConstraint r) c1, MkSolverConstraint (SolverConstraint r) c2)
-  => ([c1],[c1]) -> [c2] -> r
--- | Construct simpagation rule out of head and body constraints
-(hsprop,hssimp) <\>  bs = mkRule (map toSolverConstraint $ hssimp ++ hsprop) (length hssimp) [] (map toSolverConstraint bs) [] Nothing
--}
-
 -- | Construct simpagation rule out of head and body constraints
 (hsprop,hssimp) <\>  bs = mkRule (hssimp ++ hsprop) (length hssimp) [] (bs) [] Nothing
-
-{-
-{-# DEPRECATED (|>) "Use (=|)" #-}
--- | Add guards to rule
-(|>), (=|) :: (MkRule r, MkSolverGuard (SolverGuard r) g') => r -> [g'] -> r
-r |> g = guardRule (map toSolverGuard g) r
-(=|) = (|>)
-{-# INLINE (=|) #-}
--}
 
 {-# DEPRECATED (|>) "Use (=|)" #-}
 -- | Add guards to rule
@@ -412,39 +209,14 @@ r |> g = guardRule (g) r
 (=|) = (|>)
 {-# INLINE (=|) #-}
 
-{-
--- | Add priority to rule
-(=!!) :: (MkRule r, MkSolverPrio (SolverPrio r) p') => r -> p' -> r
-r =!! p = prioritizeRule (toSolverPrio p) r
--}
-
 -- | Add priority to rule
 r =!! p = prioritizeRule (p) r
-
-{-
--- | Add backtrack priority to rule
-(=!) :: (MkRule r, MkSolverBacktrackPrio (SolverBacktrackPrio r) p') => r -> p' -> r
-r =! p = prioritizeBacktrackRule (toSolverBacktrackPrio p) r
--}
 
 -- | Add backtrack priority to rule
 r =! p = prioritizeBacktrackRule (p) r
 
-{-
--- | Add label to rule
-(=@) :: (MkRule r) => r -> String -> r
-r =@ l = labelRule l r
--}
-
 -- | Add label to rule
 r =@ l = labelRule l r
-
-{-
--- | Add label to rule
-(@=) :: (MkRule r) => String -> r -> r
-l @= r = r =@ l
-{-# INLINE (@=) #-}
--}
 
 -- | Add label to rule
 l @= r = r =@ l
