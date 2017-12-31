@@ -37,13 +37,13 @@ library
     FlexibleContexts,
     DeriveGeneric    
   build-depends:
-    base >=4.9 && < 5,
+    base >=4.8 && < 5,
     containers >= 0.4,
     hashable >= 1.2.4,
     unordered-containers >= 0.2.7,
     fgl >= 5.4,
     mtl >= 2,
-    time >= 1.2,
+    time >= 1.8,
     chr-parse >= 0.1.0.0,
     chr-pretty >= 0.1.0.0,
     chr-data >= 0.1.0.0,
