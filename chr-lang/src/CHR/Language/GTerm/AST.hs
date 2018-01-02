@@ -9,6 +9,9 @@ module CHR.Language.GTerm.AST
   ( GTm(..)
   
   , GTermAs(..)
+  , GTermAsTm(..)
+  
+  , GTermAsM
   
   , GTermAsState(..)
   , emptyGTermAsState
@@ -84,8 +87,11 @@ instance PP GTm where
 -- | Interpretation monad, which is partial
 type GTermAsM = StateT GTermAsState (Either PP_Doc)
 
+class GTermAsTm tm where
+  asTm :: GTm -> GTermAsM tm
+
 -- | Term interpretation in context of CHR
-class GTermAs cnstr guard bprio prio tm
+class GTermAsTm tm => GTermAs cnstr guard bprio prio tm
   | cnstr -> guard bprio prio tm
   , guard -> cnstr bprio prio tm
   , bprio -> cnstr guard prio tm
@@ -93,7 +99,7 @@ class GTermAs cnstr guard bprio prio tm
   , tm -> cnstr guard bprio prio
   where
   --
-  asTm :: GTm -> GTermAsM tm
+  -- asTm :: GTm -> GTermAsM tm
   -- | as list, if matches/possible. Only to be invoked for GTm_Cns 
   asTmList :: GTm -> GTermAsM ([tm], Maybe tm)
   asTmList (GTm_Cns h    GTm_Nil     ) = asTm h >>= \h -> return ([h], Nothing)

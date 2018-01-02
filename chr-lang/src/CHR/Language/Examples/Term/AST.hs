@@ -376,8 +376,30 @@ class TmOp op where
 instance TmOp POp where
   unaryOps = [("Abs", PUOp_Abs)]
   binaryOps = [("+", PBOp_Add), ("-", PBOp_Sub), ("*", PBOp_Mul), ("Mod", PBOp_Mod), ("<", PBOp_Lt), ("<=", PBOp_Le)]
+
+instance (TmOp op) => GTermAsTm (Tm' op) where
+  asTm t = case t of
+    GTm_Con "True" [] -> return $ Tm_Bool True
+    GTm_Con "False" [] -> return $ Tm_Bool False
+    GTm_Con o [a]
+      | Just o' <- List.lookup o unaryOps -> do
+        a <- asTm a
+        return $ Tm_Op o' [a]
+    GTm_Con o [a,b]
+      | Just o' <- List.lookup o binaryOps -> do
+        a <- asTm a
+        b <- asTm b
+        return $ Tm_Op o' [a,b]
+    GTm_Con c a -> forM a asTm >>= (return . Tm_Con c)
+    GTm_Var v -> -- Tm_Var <$> gtermasVar v
+                 return $ Tm_Var v
+    GTm_Str v -> return $ Tm_Str v
+    GTm_Int i -> return $ Tm_Int (fromInteger i)
+    GTm_Nil   -> return $ Tm_Lst [] Nothing
+    t@(GTm_Cns _ _) -> asTmList t >>= (return . uncurry Tm_Lst)
+    -- t -> gtermasFail t "not a term"
   
-instance (TmOp op) => GTermAs (C' (Tm' op)) (G' (Tm' op)) (P' (Tm' op)) (P' (Tm' op)) (Tm' op) where
+instance GTermAsTm tm => GTermAs (C' tm) (G' tm) (P' tm) (P' tm) tm where
   asHeadConstraint t = case t of
     GTm_Con c a -> forM a asTm >>= (return . C_Con c)
     t -> gtermasFail t "not a constraint"
@@ -404,26 +426,6 @@ instance (TmOp op) => GTermAs (C' (Tm' op)) (G' (Tm' op)) (P' (Tm' op)) (P' (Tm'
   asAltBacktrackPrio = asHeadBacktrackPrio
   asRulePrio = asHeadBacktrackPrio
 
-  asTm t = case t of
-    GTm_Con "True" [] -> return $ Tm_Bool True
-    GTm_Con "False" [] -> return $ Tm_Bool False
-    GTm_Con o [a]
-      | Just o' <- List.lookup o unaryOps -> do
-        a <- asTm a
-        return $ Tm_Op o' [a]
-    GTm_Con o [a,b]
-      | Just o' <- List.lookup o binaryOps -> do
-        a <- asTm a
-        b <- asTm b
-        return $ Tm_Op o' [a,b]
-    GTm_Con c a -> forM a asTm >>= (return . Tm_Con c)
-    GTm_Var v -> -- Tm_Var <$> gtermasVar v
-                 return $ Tm_Var v
-    GTm_Str v -> return $ Tm_Str v
-    GTm_Int i -> return $ Tm_Int (fromInteger i)
-    GTm_Nil   -> return $ Tm_Lst [] Nothing
-    t@(GTm_Cns _ _) -> asTmList t >>= (return . uncurry Tm_Lst)
-    -- t -> gtermasFail t "not a term"
 
 --------------------------------------------------------
 -- leq example, backtrack prio specific
