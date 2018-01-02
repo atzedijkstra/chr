@@ -369,7 +369,15 @@ instance (CHRPrioEvaluatable E tm (S' tm), CHRPrioEvaluatableVal (P' tm) ~ CHRPr
 
 --------------------------------------------------------
 
-instance GTermAs C G P P Tm where
+class TmOp op where
+  unaryOps :: [(String, op)]
+  binaryOps :: [(String, op)]
+
+instance TmOp POp where
+  unaryOps = [("Abs", PUOp_Abs)]
+  binaryOps = [("+", PBOp_Add), ("-", PBOp_Sub), ("*", PBOp_Mul), ("Mod", PBOp_Mod), ("<", PBOp_Lt), ("<=", PBOp_Le)]
+  
+instance (TmOp op) => GTermAs (C' (Tm' op)) (G' (Tm' op)) (P' (Tm' op)) (P' (Tm' op)) (Tm' op) where
   asHeadConstraint t = case t of
     GTm_Con c a -> forM a asTm >>= (return . C_Con c)
     t -> gtermasFail t "not a constraint"
@@ -400,11 +408,11 @@ instance GTermAs C G P P Tm where
     GTm_Con "True" [] -> return $ Tm_Bool True
     GTm_Con "False" [] -> return $ Tm_Bool False
     GTm_Con o [a]
-      | Just o' <- List.lookup o [("Abs", PUOp_Abs)] -> do
+      | Just o' <- List.lookup o unaryOps -> do
         a <- asTm a
         return $ Tm_Op o' [a]
     GTm_Con o [a,b]
-      | Just o' <- List.lookup o [("+", PBOp_Add), ("-", PBOp_Sub), ("*", PBOp_Mul), ("Mod", PBOp_Mod), ("<", PBOp_Lt), ("<=", PBOp_Le)] -> do
+      | Just o' <- List.lookup o binaryOps -> do
         a <- asTm a
         b <- asTm b
         return $ Tm_Op o' [a,b]
