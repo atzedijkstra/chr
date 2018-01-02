@@ -4,13 +4,13 @@
  -}
 
 module CHR.Language.Examples.Term.AST
-  ( Tm(..)
-  , C(..)
-  , G(..)
-  , P(..)
+  ( Tm'(..), Tm
+  , C'(..), C
+  , G'(..), G
+  , P'(..), P
   , POp(..)
   , E
-  , S
+  , S', S
   
   , Var
   )
@@ -24,7 +24,6 @@ import           CHR.Data.Substitutable
 import qualified CHR.Data.TreeTrie                              as TT
 import qualified CHR.Data.VecAlloc                              as VAr
 import           CHR.Pretty                                     as PP
--- import           UHC.Util.Serialize
 import           CHR.Types
 import           CHR.Types.Core
 import           CHR.Utils
@@ -52,16 +51,18 @@ type Var = -- IVar
            String
            
 
-data Key
+data Key' op
   = Key_Int     !Int            
   | Key_Var     !Var            
   | Key_Str     !String   
   | Key_Lst
-  | Key_Op      !POp   
+  | Key_Op      !op   
   | Key_Con     !String   
   deriving (Eq, Ord, Show)
 
-instance PP Key where
+type Key = Key' POp
+
+instance PP op => PP (Key' op) where
   pp (Key_Int i) = pp i
   pp (Key_Var v) = pp v
   pp (Key_Str s) = pp s
@@ -70,22 +71,24 @@ instance PP Key where
   pp (Key_Con s) = pp s
 
 -- | Terms
-data Tm
+data Tm' op
   = Tm_Var Var             -- ^ variable (to be substituted)
   | Tm_Int Int              -- ^ int value (for arithmetic)
   | Tm_Str String
   | Tm_Bool Bool            -- ^ bool value
-  | Tm_Con String [Tm]      -- ^ general term structure
-  | Tm_Lst [Tm] (Maybe Tm)  -- ^ special case: list with head segment and term tail
-  | Tm_Op  POp    [Tm]      -- ^ interpretable (when solving) term structure
+  | Tm_Con String [Tm' op]      -- ^ general term structure
+  | Tm_Lst [Tm' op] (Maybe (Tm' op))  -- ^ special case: list with head segment and term tail
+  | Tm_Op  op    [Tm' op]      -- ^ interpretable (when solving) term structure
   deriving (Show, Eq, Ord, Typeable, Generic)
 
-instance VarTerm Tm where
+type Tm = Tm' POp
+
+instance VarTerm (Tm' op) where
   varTermMbKey (Tm_Var v) = Just v
   varTermMbKey _          = Nothing
   varTermMkKey            = Tm_Var
 
-instance PP Tm where
+instance PP op => PP (Tm' op) where
   pp (Tm_Var v        ) = pp v -- "v" >|< v
   pp (Tm_Con c []     ) = pp c
   pp (Tm_Con c as     ) = ppParens $ c >#< ppSpaces as
@@ -96,43 +99,41 @@ instance PP Tm where
   pp (Tm_Str s        ) = pp $ show s
   pp (Tm_Bool b       ) = pp b
 
--- instance Serialize Tm
-
 -- | Constraint
-data C
-  = C_Con String [Tm]
-  | CB_Eq Tm Tm          -- ^ builtin: unification
-  | CB_Ne Tm Tm          -- ^ builtin: non unification
+data C' tm
+  = C_Con String [tm]
+  | CB_Eq tm tm          -- ^ builtin: unification
+  | CB_Ne tm tm          -- ^ builtin: non unification
   | CB_Fail              -- ^ explicit fail
   deriving (Show, Eq, Ord, Typeable, Generic)
 
-instance PP C where
+type C = C' Tm
+
+instance PP tm => PP (C' tm) where
   pp (C_Con c as) = c >#< ppSpaces as
   pp (CB_Eq x y ) = "unify" >#< ppSpaces [x,y]
   pp (CB_Ne x y ) = "not-unify" >#< ppSpaces [x,y]
   pp (CB_Fail   ) = pp "fail"
 
--- instance Serialize C
-
 -- | Guard
-data G
-  = G_Eq Tm Tm          -- ^ check for equality
-  | G_Ne Tm Tm          -- ^ check for inequality
-  | G_Tm Tm             -- ^ determined by arithmetic evaluation
+data G' tm
+  = G_Eq tm tm          -- ^ check for equality
+  | G_Ne tm tm          -- ^ check for inequality
+  | G_Tm tm             -- ^ determined by arithmetic evaluation
   deriving (Show, Typeable, Generic)
 
-instance PP G where
+type G = G' Tm
+
+instance PP tm => PP (G' tm) where
   pp (G_Eq x y) = "is-eq" >#< ppParensCommas [x,y]
   pp (G_Ne x y) = "is-ne" >#< ppParensCommas [x,y]
   pp (G_Tm t  ) = "eval"  >#< ppParens t
 
--- instance Serialize G
+type instance TrTrKey (Tm' op) = Key' op
+type instance TrTrKey (C' (Tm' op)) = Key' op
 
-type instance TrTrKey Tm = Key
-type instance TrTrKey C = Key
-
-type instance TT.TrTrKey Tm = Key
-type instance TT.TrTrKey C  = Key
+type instance TT.TrTrKey (Tm' op) = Key' op
+type instance TT.TrTrKey (C' (Tm' op)) = Key' op
 
 instance TT.TreeTrieKeyable Tm where
   toTreeTriePreKey1 (Tm_Var  v) = TT.prekey1Wild
@@ -174,105 +175,104 @@ instance PP POp where
   pp PBOp_Le  = pp "<="
   pp PUOp_Abs = pp "abs"
 
-newtype P
-  = P_Tm Tm
+newtype P' tm
+  = P_Tm tm
   deriving (Eq, Ord, Show, Generic)
 
-instance PP P where
+type P = P' Tm
+
+instance PP tm => PP (P' tm) where
   pp (P_Tm t) = pp t
 
--- instance Serialize POp
-
--- instance Serialize P
-
-instance Bounded P where
+instance Bounded (P' (Tm' op)) where
   minBound = P_Tm $ Tm_Int $ fromIntegral $ unPrio $ minBound
   maxBound = P_Tm $ Tm_Int $ fromIntegral $ unPrio $ maxBound
 
 -- type S = IntMap.IntMap Tm
-type S = Map.Map Var Tm
+type S' tm = Map.Map Var tm
+type S = S' Tm
 -- type S = MapH.HashMap Var Tm
 -- type S = VAr.VecAlloc Tm
 -- type S = Lk.DefaultScpsLkup Var Tm
 
-type instance VarLookupKey S = Var
-type instance VarLookupVal S = Tm
+type instance VarLookupKey (S' tm) = Var
+type instance VarLookupVal (S' tm) = tm
 
-instance PP S where
+instance PP tm => PP (S' tm) where
   pp = ppAssocLV . Lk.toList
 
-type instance ExtrValVarKey G = Var
-type instance ExtrValVarKey C = Var
-type instance ExtrValVarKey Tm = Var
-type instance ExtrValVarKey P = Var
+type instance ExtrValVarKey (G' tm) = Var
+type instance ExtrValVarKey (C' tm) = Var
+type instance ExtrValVarKey (Tm' op) = Var
+type instance ExtrValVarKey (P'  op) = Var
 
-type instance CHRMatchableKey S = Key
+type instance CHRMatchableKey (S' (Tm' op)) = Key' op
 
-instance VarLookup S where
+instance VarLookup (S' tm) where
   varlookupWithMetaLev _ = Lk.lookup
   varlookupKeysSetWithMetaLev _ = Lk.keysSet
   varlookupSingletonWithMetaLev _ = Lk.singleton
   varlookupEmpty = Lk.empty
 
-instance Lk.LookupApply S S where
+instance Lk.LookupApply (S' tm) (S' tm) where
   apply = Lk.union
 
-instance VarUpdatable S S where
+instance VarUpdatable tm (S' tm) => VarUpdatable (S' tm) (S' tm) where
   varUpd s = {- Lk.apply s . -} Lk.map (s `varUpd`) -- (|+>)
 
-instance VarUpdatable Tm S where
+instance VarUpdatable (Tm' op) (S' (Tm' op)) where
   s `varUpd` t = case fromMaybe t $ Lk.lookupResolveVal varTermMbKey t s of
       Tm_Con c as -> Tm_Con c $ s `varUpd` as
       Tm_Lst h mt -> Tm_Lst (s `varUpd` h) (s `varUpd` mt)
       Tm_Op  o as -> Tm_Op  o $ s `varUpd` as
       t -> t
 
-instance VarUpdatable P S where
+instance VarUpdatable tm (S' tm) => VarUpdatable (P' tm) (S' tm) where
   s `varUpd` p = case p of
     P_Tm t -> P_Tm (s `varUpd` t)
 
-instance VarUpdatable G S where
+instance VarUpdatable tm (S' tm) => VarUpdatable (G' tm) (S' tm) where
   s `varUpd` G_Eq x y = G_Eq (s `varUpd` x) (s `varUpd` y)
   s `varUpd` G_Ne x y = G_Ne (s `varUpd` x) (s `varUpd` y)
   s `varUpd` G_Tm x   = G_Tm (s `varUpd` x)
 
-instance VarUpdatable C S where
+instance VarUpdatable tm (S' tm) => VarUpdatable (C' tm) (S' tm) where
   s `varUpd` c = case c of
     C_Con c as -> C_Con c $ map (s `varUpd`) as
     CB_Eq x y  -> CB_Eq (s `varUpd` x) (s `varUpd` y)
     CB_Ne x y  -> CB_Ne (s `varUpd` x) (s `varUpd` y)
     c          -> c
 
-instance VarExtractable Tm where
+instance VarExtractable (Tm' op) where
   varFreeSet (Tm_Var v) = Set.singleton v
   varFreeSet (Tm_Con _ as) = Set.unions $ map varFreeSet as
   varFreeSet (Tm_Lst h mt) = Set.unions $ map varFreeSet $ maybeToList mt ++ h
   varFreeSet (Tm_Op  _ as) = Set.unions $ map varFreeSet as
   varFreeSet _ = Set.empty
 
-instance VarExtractable G where
+instance (VarExtractable tm, ExtrValVarKey (G' tm) ~ ExtrValVarKey tm) => VarExtractable (G' tm) where
   varFreeSet (G_Eq x y) = Set.unions [varFreeSet x, varFreeSet y]
   varFreeSet (G_Ne x y) = Set.unions [varFreeSet x, varFreeSet y]
   varFreeSet (G_Tm x  ) = varFreeSet x
 
-instance VarExtractable C where
+instance (VarExtractable tm, ExtrValVarKey (C' tm) ~ ExtrValVarKey tm) => VarExtractable (C' tm) where
   varFreeSet (C_Con _ as) = Set.unions $ map varFreeSet as
   varFreeSet (CB_Eq x y ) = Set.unions [varFreeSet x, varFreeSet y]
   varFreeSet _            = Set.empty
 
-instance VarExtractable P where
+instance (VarExtractable tm, ExtrValVarKey (P' tm) ~ ExtrValVarKey tm) => VarExtractable (P' tm) where
   varFreeSet (P_Tm t) = varFreeSet t
 
-instance CHREmptySubstitution S where
+instance CHREmptySubstitution (S' tm) where
   chrEmptySubst = Lk.empty
 
-instance IsConstraint C where
+instance IsConstraint (C' tm) where
   cnstrSolvesVia (C_Con _ _) = ConstraintSolvesVia_Rule
   cnstrSolvesVia (CB_Eq _ _) = ConstraintSolvesVia_Solve
   cnstrSolvesVia (CB_Ne _ _) = ConstraintSolvesVia_Solve
   cnstrSolvesVia (CB_Fail  ) = ConstraintSolvesVia_Fail
 
-instance CHRCheckable E G S where
+instance (TmEvalOp Tm' op, Eq op) => CHRCheckable E (G' (Tm' op)) (S' (Tm' op)) where
   chrCheckM e g =
     case g of
       G_Eq t1 t2 -> chrUnifyM CHRMatchHow_Check e t1 t2
@@ -289,7 +289,7 @@ instance CHRCheckable E G S where
           Tm_Bool True -> chrMatchSuccess
           _            -> chrMatchFail
 
-instance CHRMatchable E Tm S where
+instance (TmEvalOp Tm' op, Eq op) => CHRMatchable E (Tm' op) (S' (Tm' op)) where
   chrUnifyM how e t1 t2 = case (t1, t2) of
       (Tm_Con c1 as1, Tm_Con c2 as2) | c1 == c2                 -> chrUnifyM how e as1 as2
       (Tm_Lst (h1:t1) mt1, Tm_Lst (h2:t2) mt2)                  -> chrUnifyM how e h1 h2 >> chrUnifyM how e (Tm_Lst t1 mt1) (Tm_Lst t2 mt2)
@@ -305,28 +305,33 @@ instance CHRMatchable E Tm S where
       (Tm_Bool b1   , Tm_Bool b2   ) | b1 == b2                 -> chrMatchSuccess
       _                                                         -> chrMatchResolveCompareAndContinue how (chrUnifyM how e) t1 t2
 
-tmEval :: Tm -> CHRMatcher S Tm
+tmEval :: TmEvalOp Tm' op => Tm' op -> CHRMatcher (S' (Tm' op)) (Tm' op)
 tmEval x = case x of
           Tm_Int _    -> return x
           Tm_Var v    -> Lk.lookupResolveAndContinueM varTermMbKey chrMatchSubst chrMatchFailNoBinding tmEval v
           Tm_Op  o xs -> tmEvalOp o xs
           _           -> chrMatchFail
 
-tmEvalOp :: POp -> [Tm] -> CHRMatcher S Tm
-tmEvalOp o xs = do
-          xs <- forM xs tmEval 
-          case (o, xs) of
-            (PUOp_Abs, [Tm_Int x]) -> ret $ abs x
-            (PBOp_Add, [Tm_Int x, Tm_Int y]) -> ret $ x + y
-            (PBOp_Sub, [Tm_Int x, Tm_Int y]) -> ret $ x - y
-            (PBOp_Mul, [Tm_Int x, Tm_Int y]) -> ret $ x * y
-            (PBOp_Mod, [Tm_Int x, Tm_Int y]) -> ret $ x `mod` y
-            (PBOp_Lt , [Tm_Int x, Tm_Int y]) -> retb $ x < y
-            (PBOp_Le , [Tm_Int x, Tm_Int y]) -> retb $ x <= y
-        where ret  x = return $ Tm_Int  x
-              retb x = return $ Tm_Bool x
+class TmEvalOp tm op where
+  tmEvalOp :: op -> [tm op] -> CHRMatcher (S' (tm op)) (tm op)
 
-instance CHRMatchable E C S where
+instance TmEvalOp Tm' POp where
+  -- tmEvalOp :: op -> [Tm' op] -> CHRMatcher (S' (Tm' op)) (Tm' op)
+  tmEvalOp o xs = do
+            xs <- forM xs tmEval 
+            case (o, xs) of
+              (PUOp_Abs, [Tm_Int x]) -> ret $ abs x
+              (PBOp_Add, [Tm_Int x, Tm_Int y]) -> ret $ x + y
+              (PBOp_Sub, [Tm_Int x, Tm_Int y]) -> ret $ x - y
+              (PBOp_Mul, [Tm_Int x, Tm_Int y]) -> ret $ x * y
+              (PBOp_Mod, [Tm_Int x, Tm_Int y]) -> ret $ x `mod` y
+              (PBOp_Lt , [Tm_Int x, Tm_Int y]) -> retb $ x < y
+              (PBOp_Le , [Tm_Int x, Tm_Int y]) -> retb $ x <= y
+          where ret  x = return $ Tm_Int  x
+                retb x = return $ Tm_Bool x
+
+
+instance (VarExtractable tm, CHRMatchable E tm (S' tm), ExtrValVarKey (C' tm) ~ ExtrValVarKey tm) => CHRMatchable E (C' tm) (S' tm) where
   chrUnifyM how e c1 c2 = do
     case (c1, c2) of
       (C_Con c1 as1, C_Con c2 as2) | c1 == c2 && length as1 == length as2 
@@ -339,22 +344,22 @@ instance CHRMatchable E C S where
         s <- getl chrmatcherstateVarLookup
         chrmatcherRun' (\_ -> chrMatchSuccess) (\_ _ _ -> chrMatchFail) (chrBuiltinSolveM e (CB_Eq x y)) menv s
 
-instance CHRMatchable E P S where
+instance (VarExtractable tm, CHRMatchable E tm (S' tm), ExtrValVarKey (P' tm) ~ ExtrValVarKey tm) => CHRMatchable E (P' tm) (S' tm) where
   chrUnifyM how e p1 p2 = do
     case (p1, p2) of
       (P_Tm   t1     , P_Tm   t2     ) -> chrUnifyM how e t1  t2
 
-type instance CHRPrioEvaluatableVal Tm = Prio
+type instance CHRPrioEvaluatableVal (Tm' op) = Prio
 
-instance CHRPrioEvaluatable E Tm S where
+instance (TmEvalOp Tm' op) => CHRPrioEvaluatable E (Tm' op) (S' (Tm' op)) where
   chrPrioEval e s t = case chrmatcherRun' (\_ -> Tm_Int $ fromIntegral $ unPrio $ (minBound :: Prio)) (\_ _ x -> x) (tmEval t) emptyCHRMatchEnv (Lk.lifts s) of
     Tm_Int i -> fromIntegral i
     t        -> minBound
   chrPrioLift = Tm_Int . fromIntegral
 
-type instance CHRPrioEvaluatableVal P = Prio
+type instance CHRPrioEvaluatableVal (P' tm) = Prio
 
-instance CHRPrioEvaluatable E P S where
+instance (CHRPrioEvaluatable E tm (S' tm), CHRPrioEvaluatableVal (P' tm) ~ CHRPrioEvaluatableVal tm) => CHRPrioEvaluatable E (P' tm) (S' tm) where
   chrPrioEval e s p = case p of
     P_Tm t -> chrPrioEval e s t
   chrPrioLift = P_Tm . chrPrioLift

@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                chr-lang
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            AST + surface language around chr
 description:         AST + surface language around chr, with executable for parsing and running the evaluator.
 homepage:            https://github.com/atzedijkstra/chr
