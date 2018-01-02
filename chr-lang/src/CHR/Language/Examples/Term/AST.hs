@@ -13,6 +13,8 @@ module CHR.Language.Examples.Term.AST
   , S', S
   
   , Var
+  
+  , TmEvalOp(..)
   )
   where
 
@@ -129,13 +131,13 @@ instance PP tm => PP (G' tm) where
   pp (G_Ne x y) = "is-ne" >#< ppParensCommas [x,y]
   pp (G_Tm t  ) = "eval"  >#< ppParens t
 
-type instance TrTrKey (Tm' op) = Key' op
-type instance TrTrKey (C' (Tm' op)) = Key' op
+-- type instance TrTrKey (Tm' op) = Key' op
+-- type instance TrTrKey (C' (Tm' op)) = Key' op
 
 type instance TT.TrTrKey (Tm' op) = Key' op
-type instance TT.TrTrKey (C' (Tm' op)) = Key' op
+type instance TT.TrTrKey (C' (tm op)) = Key' op
 
-instance TT.TreeTrieKeyable Tm where
+instance TT.TreeTrieKeyable (Tm' op) where
   toTreeTriePreKey1 (Tm_Var  v) = TT.prekey1Wild
   toTreeTriePreKey1 (Tm_Int  i) = TT.prekey1 $ Key_Int i
   toTreeTriePreKey1 (Tm_Str  s) = TT.prekey1 $ Key_Str {- $ "Tm_Str:" ++ -} s
@@ -144,7 +146,7 @@ instance TT.TreeTrieKeyable Tm where
   toTreeTriePreKey1 (Tm_Op op as) = TT.prekey1WithChildren (Key_Op op) as
   toTreeTriePreKey1 (Tm_Lst h _ ) = TT.prekey1WithChildren Key_Lst h
 
-instance TT.TreeTrieKeyable C where
+instance (tm ~ Tm' op, TT.TrTrKey (C' tm) ~ TT.TrTrKey tm) => TT.TreeTrieKeyable (C' tm) where
   -- Only necessary for non-builtin constraints
   toTreeTriePreKey1 (C_Con c as) = TT.prekey1WithChildren (Key_Str {- $ "C_Con:" ++ -} c) as
   toTreeTriePreKey1 _            = TT.prekey1Nil
@@ -204,9 +206,9 @@ instance PP tm => PP (S' tm) where
 type instance ExtrValVarKey (G' tm) = Var
 type instance ExtrValVarKey (C' tm) = Var
 type instance ExtrValVarKey (Tm' op) = Var
-type instance ExtrValVarKey (P'  op) = Var
+type instance ExtrValVarKey (P'  tm) = Var
 
-type instance CHRMatchableKey (S' (Tm' op)) = Key' op
+type instance CHRMatchableKey (S' (tm op)) = Key' op
 
 instance VarLookup (S' tm) where
   varlookupWithMetaLev _ = Lk.lookup
@@ -374,19 +376,19 @@ instance GTermAs C G P P Tm where
 
   asBodyConstraint t = case t of
     GTm_Con "Fail" [] -> return CB_Fail
-    GTm_Con o [a,b] | isJust o' -> do
+    GTm_Con o [a,b]
+      | Just o' <- List.lookup o [("==", CB_Eq), ("/=", CB_Ne)] -> do
         a <- asTm a
         b <- asTm b
-        return $ fromJust o' a b
-      where o' = List.lookup o [("==", CB_Eq), ("/=", CB_Ne)]
+        return $ o' a b
     t -> asHeadConstraint t
 
   asGuard t = case t of
-    GTm_Con o [a,b] | isJust o' -> do
+    GTm_Con o [a,b]
+      | Just o' <- List.lookup o [("==", G_Eq), ("/=", G_Ne)] -> do
         a <- asTm a
         b <- asTm b
-        return $ fromJust o' a b
-      where o' = List.lookup o [("==", G_Eq), ("/=", G_Ne)]
+        return $ o' a b
     t -> fmap G_Tm $ asTm t
     
   asHeadBacktrackPrio = fmap P_Tm . asTm
@@ -397,15 +399,15 @@ instance GTermAs C G P P Tm where
   asTm t = case t of
     GTm_Con "True" [] -> return $ Tm_Bool True
     GTm_Con "False" [] -> return $ Tm_Bool False
-    GTm_Con o [a] | isJust o' -> do
+    GTm_Con o [a]
+      | Just o' <- List.lookup o [("Abs", PUOp_Abs)] -> do
         a <- asTm a
-        return $ Tm_Op (fromJust o') [a]
-      where o' = List.lookup o [("Abs", PUOp_Abs)]
-    GTm_Con o [a,b] | isJust o' -> do
+        return $ Tm_Op o' [a]
+    GTm_Con o [a,b]
+      | Just o' <- List.lookup o [("+", PBOp_Add), ("-", PBOp_Sub), ("*", PBOp_Mul), ("Mod", PBOp_Mod), ("<", PBOp_Lt), ("<=", PBOp_Le)] -> do
         a <- asTm a
         b <- asTm b
-        return $ Tm_Op (fromJust o') [a,b]
-      where o' = List.lookup o [("+", PBOp_Add), ("-", PBOp_Sub), ("*", PBOp_Mul), ("Mod", PBOp_Mod), ("<", PBOp_Lt), ("<=", PBOp_Le)]
+        return $ Tm_Op o' [a,b]
     GTm_Con c a -> forM a asTm >>= (return . Tm_Con c)
     GTm_Var v -> -- Tm_Var <$> gtermasVar v
                  return $ Tm_Var v
