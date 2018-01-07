@@ -1109,7 +1109,8 @@ slvCandidate waitingWk alreadyMatchedCombis wi (StoredCHR {_storedHeadKeys = ks,
 
 -- | Match the stored CHR with a set of possible constraints, giving a substitution on success
 slvMatch
-  :: ( MonoBacktrackPrio c g bp p s env m
+  :: forall c g bp p s env m
+   . ( MonoBacktrackPrio c g bp p s env m
      -- these below should not be necessary as they are implied (via superclasses) by MonoBacktrackPrio, but deeper nested superclasses seem not to be picked up...
      , CHRMatchable env c s
      , CHRCheckable env g s
@@ -1125,7 +1126,7 @@ slvMatch
        -> CHRMonoBacktrackPrioT c g bp p s env m (Maybe (FoundSlvMatch c g bp p s))
 slvMatch env chr@(StoredCHR {_storedChrRule = Rule {rulePrio = mbpr, ruleHead = hc, ruleGuard = gd, ruleBacktrackPrio = mbbpr, ruleBodyAlts = alts}}) cnstrs headInx = do
     subst <- getl $ bst ^* chrbstSolveSubst
-    curbprio <- fmap chrPrioLift $ getl $ bst ^* chrbstBacktrackPrio
+    curbprio <- fmap (chrPrioLift (Proxy :: Proxy env) (Proxy :: Proxy s)) $ getl $ bst ^* chrbstBacktrackPrio
     return $ fmap (\(s,ws) -> FoundSlvMatch s freevars ws (FoundMatchSortKey (fmap ((,) s) mbpr) (Set.size ws) (_storedChrInx chr))
                     [ FoundBodyAlt i bp a | (i,a) <- zip [0..] alts, let bp = maybe minBound (chrPrioEval env s) $ rbodyaltBacktrackPrio a
                     ])

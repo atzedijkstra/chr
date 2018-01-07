@@ -263,7 +263,7 @@ class (CHREmptySubstitution subst, LookupApply subst subst) => CHRCheckable env 
 type family CHRPrioEvaluatableVal p :: *
 
 -- | A PrioEvaluatable participates in the reduction process to indicate the rule priority, higher prio takes precedence
-class (Ord (CHRPrioEvaluatableVal x), Bounded (CHRPrioEvaluatableVal x)) => CHRPrioEvaluatable env x subst | x -> env subst where
+class (Ord (CHRPrioEvaluatableVal x), Bounded (CHRPrioEvaluatableVal x)) => CHRPrioEvaluatable env x subst where
   -- | Reduce to a prio representation
   chrPrioEval :: env -> subst -> x -> CHRPrioEvaluatableVal x
   chrPrioEval _ _ _ = minBound
@@ -273,7 +273,7 @@ class (Ord (CHRPrioEvaluatableVal x), Bounded (CHRPrioEvaluatableVal x)) => CHRP
   chrPrioCompare e (s1,x1) (s2,x2) = chrPrioEval e s1 x1 `compare` chrPrioEval e s2 x2
   
   -- | Lift prio val into prio
-  chrPrioLift :: CHRPrioEvaluatableVal x -> x
+  chrPrioLift :: proxy env -> proxy subst -> CHRPrioEvaluatableVal x -> x
 
 -------------------------------------------------------------------------------------------
 --- Prio

@@ -26,6 +26,8 @@ library
     CHR.Language.GTerm,
     CHR.Language.GTerm.AST,
     CHR.Language.GTerm.Parser,
+    CHR.Language.ATerm,
+    CHR.Language.ATerm.AST,
     CHR.Language.Examples.Term.AST,
     CHR.Language.Examples.Term.Run,
     CHR.Language.Examples.Term.Visualizer
@@ -47,7 +49,7 @@ library
     chr-parse >= 0.1.0.0,
     chr-pretty >= 0.1.0.0,
     chr-data >= 0.1.0.0,
-    chr-core >= 0.1.0.0
+    chr-core >= 0.1.0.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 

@@ -37,7 +37,7 @@ scanOpts
 -------------------------------------------------------------------------------------------
 
 -- | Parse a file as a CHR spec + queries
-parseFile :: GTermAs c g bp rp tm => FilePath -> IO (Either PP_Doc ([Rule c g bp rp], [c], NmToVarMp))
+parseFile :: GTermAs c g bp rp => FilePath -> IO (Either PP_Doc ([Rule c g bp rp], [c], NmToVarMp))
 parseFile f = do
     toks <- scanFile
       (Set.toList $ scoKeywordsTxt scanOpts)
