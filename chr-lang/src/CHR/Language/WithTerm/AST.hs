@@ -103,7 +103,7 @@ type instance TT.TrTrKey (C' tm) = Key' (TmOp tm)
 
 instance (TT.TrTrKey (C' tm) ~ TT.TrTrKey tm, TT.TreeTrieKeyable tm) => TT.TreeTrieKeyable (C' tm) where
   -- Only necessary for non-builtin constraints
-  toTreeTriePreKey1 (C_Con c as) = TT.prekey1WithChildren (Key_Str {- $ "C_Con:" ++ -} c) as
+  toTreeTriePreKey1 (C_Con c as) = TT.prekey1WithChildren (Key_Str c) as
   toTreeTriePreKey1 _            = TT.prekey1Nil
 
 type E' tm = ()

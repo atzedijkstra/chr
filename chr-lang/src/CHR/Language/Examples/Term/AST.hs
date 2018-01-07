@@ -85,9 +85,9 @@ type instance TT.TrTrKey (Tm' op) = Key' op
 instance TT.TreeTrieKeyable (Tm' op) where
   toTreeTriePreKey1 (Tm_Var  v) = TT.prekey1Wild
   toTreeTriePreKey1 (Tm_Int  i) = TT.prekey1 $ Key_Int i
-  toTreeTriePreKey1 (Tm_Str  s) = TT.prekey1 $ Key_Str {- $ "Tm_Str:" ++ -} s
+  toTreeTriePreKey1 (Tm_Str  s) = TT.prekey1 $ Key_Str s
   toTreeTriePreKey1 (Tm_Bool i) = TT.prekey1 $ Key_Int $ fromEnum i
-  toTreeTriePreKey1 (Tm_Con c as) = TT.prekey1WithChildren (Key_Str {- $ "Tm_Con:" ++ -} c) as
+  toTreeTriePreKey1 (Tm_Con c as) = TT.prekey1WithChildren (Key_Str c) as
   toTreeTriePreKey1 (Tm_Op op as) = TT.prekey1WithChildren (Key_Op op) as
   toTreeTriePreKey1 (Tm_Lst h _ ) = TT.prekey1WithChildren Key_Lst h
 

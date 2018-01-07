@@ -799,13 +799,6 @@ defaultCHRSolveOpts
 -------------------------------------------------------------------------------------------
 
 {-# INLINABLE chrSolve #-}
-{- # SPECIALIZE chrSolve
-  :: ( MonoBacktrackPrio c g bp p s e IO
-     , PP s
-     ) => CHRSolveOpts
-       -> e
-       -> CHRMonoBacktrackPrioT c g bp p s e IO (SolverResult s)
-  # -}
 -- | (Under dev) solve
 chrSolve
   :: forall c g bp p s e m .
