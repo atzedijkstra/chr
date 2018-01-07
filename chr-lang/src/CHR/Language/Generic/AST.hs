@@ -8,7 +8,7 @@
 --- Generic terms describing constraints, providing interpretation to AST of your choice
 -------------------------------------------------------------------------------------------
 
-module CHR.Language.GTerm.AST
+module CHR.Language.Generic.AST
   ( TmOp
   , TmMk(..)
   , TmIs(..)

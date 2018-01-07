@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 
-module CHR.Language.GTerm.Parser
+module CHR.Language.Generic.Parser
   ( parseFile
   )
   where
@@ -16,7 +16,7 @@ import           CHR.Pretty
 
 import           CHR.Types
 import           CHR.Types.Rule
-import           CHR.Language.GTerm.AST
+import           CHR.Language.Generic.AST
 
 -------------------------------------------------------------------------------------------
 --- Scanning options for CHR parsing

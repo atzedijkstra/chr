@@ -13,7 +13,7 @@ import           CHR.Pretty
 import qualified CHR.Data.Lookup as Lk
 import           CHR.Types
 import           CHR.Types.Rule
-import           CHR.Language.GTerm.Parser
+import           CHR.Language.Generic.Parser
 -- import           UHC.Util.CHR.Solve.TreeTrie.Mono
 import           CHR.Solve.MonoBacktrackPrio as MBP
 import           CHR.Language.Examples.Term.AST

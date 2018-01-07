@@ -23,11 +23,12 @@ source-repository head
 
 library
   exposed-modules:
-    CHR.Language.GTerm,
-    CHR.Language.GTerm.AST,
-    CHR.Language.GTerm.Parser,
-    CHR.Language.ATerm,
-    CHR.Language.ATerm.AST,
+    CHR.Language.Generic,
+    CHR.Language.Generic.AST,
+    CHR.Language.Generic.Parser,
+    CHR.Language.WithTerm,
+    CHR.Language.WithTerm.AST,
+    CHR.Language.WithTerm.Run,
     CHR.Language.Examples.Term.AST,
     CHR.Language.Examples.Term.Run,
     CHR.Language.Examples.Term.Visualizer
