@@ -5,9 +5,7 @@
 -------------------------------------------------------------------------
 
 module CHR.Pretty
-  ( -- module UU.Pretty
-    -- module UHC.Util.Chitil.Pretty
-    module CHR.Pretty.Simple
+  ( module CHR.Pretty.Simple
 
   , PP_DocL
 
@@ -84,13 +82,10 @@ module CHR.Pretty
   )
   where
 
--- import UU.Pretty
--- import UHC.Util.Chitil.Pretty
 import           CHR.Pretty.Simple
--- import           CHR.Utils
--- import           UHC.Util.FPath
--- import           UHC.Util.Time
+
 import           System.IO
+
 import           Data.List
 import           Data.Word
 import qualified Data.Set as Set
@@ -103,14 +98,7 @@ type PP_DocL = [PP_Doc]
 
 -- | PP list with open, separator, and close
 ppListSep :: (PP s, PP c, PP o, PP a) => o -> c -> s -> [a] -> PP_Doc
-ppListSep = ppListSepWith pp -- o >|< hlist (intersperse (pp s) (map pp pps)) >|< c
-{-
-ppListSep o c s pps
-  = o >|< l pps >|< c
-  where l []      = empty
-        l [p]     = pp p
-        l (p:ps)  = pp p >|< map (s >|<) ps
--}
+ppListSep = ppListSepWith pp
 
 -- | PP list with open, separator, and close, and explicit PP function
 ppListSepWith :: (PP s, PP c, PP o) => (a->PP_Doc) -> o -> c -> s -> [a] -> PP_Doc
@@ -308,16 +296,6 @@ ppListSepV' aside o c s pps
         l [p]     = o `aside` p `aside` c
         l (p:ps)  = vlist ([o `aside` p] ++ map (s `aside`) (init ps) ++ [s `aside` last ps `aside` c])
 
--- compact vertical list
-{-
-ppListSepV3 :: (PP s, PP c, PP o, PP a) => o -> c -> s -> [a] -> PP_Doc
-ppListSepV3 o c s pps
-  = l pps
-  where l []      = o >|< c
-        l [p]     = o >|< p >|< c
-        l (p:ps)  = vlist ([o >|< p] ++ map (s >|<) (init ps) ++ [s >|< last ps >|< c])
--}
-
 ppListSepV :: (PP s, PP c, PP o, PP a) => o -> c -> s -> [a] -> PP_Doc
 ppListSepV = ppListSepV' (>|<)
 
@@ -428,14 +406,6 @@ instance PP Bool where
 instance PP Word32 where
   pp = pp . show
 
-{-
-instance PP ClockTime where
-  pp = pp . show
-
-instance PP FPath where
-  pp = pp . fpathToStr
--}
-
 instance PP () where
   pp _ = pp "()"
 
@@ -480,11 +450,6 @@ showPP x = disp (pp x) 1000 ""
 -------------------------------------------------------------------------
 
 hPutLn :: Handle -> Int -> PP_Doc -> IO ()
-{-
-hPutLn h w pp
-  = do hPut h pp w
-       hPutStrLn h ""
--}
 hPutLn h w pp
   = hPutStrLn h (disp pp w "")
 
@@ -503,14 +468,6 @@ putPPLn = hPutPPLn stdout
 hPutPPFile :: Handle -> PP_Doc -> Int -> IO ()
 hPutPPFile h pp wid
   = hPutLn h wid pp
-
-{-
-putPPFPath :: FPath -> PP_Doc -> Int -> IO ()
-putPPFPath fp pp wid
-  = do { fpathEnsureExists fp
-       ; putPPFile (fpathToStr fp) pp wid
-       }
--}
 
 putPPFile :: String -> PP_Doc -> Int -> IO ()
 putPPFile fn pp wid

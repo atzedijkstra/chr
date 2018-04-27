@@ -25,10 +25,8 @@ module CHR.Types
 
 import qualified CHR.Data.TreeTrie          as TT
 import           CHR.Data.TreeTrie          ( TrTrKey )
-
 import           CHR.Pretty                 as Pretty
 import           CHR.Data.AssocL
-
 import           CHR.Types.Core             ( IVar
                                             , NmToVarMp, emptyNmToVarMp
                                             , Prio

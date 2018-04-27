@@ -1,5 +1,9 @@
 # Revision history for chr
 
+## 0.1.0.3  -- 2018-04-27
+
+* comment cleanup
+
 ## 0.1.0.2  -- 2018-01-07
 
 * haddock build errors fixed
@@ -10,4 +14,4 @@
 
 ## 0.1.0.0  -- 2017-12-28
 
-* First version. Released on an unsuspecting world.
+* First version.

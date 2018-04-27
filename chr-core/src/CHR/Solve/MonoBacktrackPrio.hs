@@ -84,14 +84,11 @@ import           Control.Monad.State.Strict
 import           Control.Monad.LogicState
 
 import           CHR.Pretty                                     as Pretty
--- import           UHC.Util.Serialize
 import           CHR.Types.Core
 import           CHR.Types.Rule
 import           CHR.Data.Substitutable
 import           CHR.Data.AssocL
 import           CHR.Data.Fresh
--- 
--- import           UHC.Util.Debug
 
 import           CHR.Types
 
@@ -248,8 +245,6 @@ data CHRGlobState cnstr guard bprio prio subst env m
       { _chrgstStore                 :: !(CHRStore cnstr guard bprio prio)                     -- ^ Actual database of rules, to be searched
       , _chrgstNextFreeRuleInx       :: {-# UNPACK #-} !CHRInx                                          -- ^ Next free rule identification, used by solving to identify whether a rule has been used for a constraint.
                                                                                          --   The numbering is applied to constraints inside a rule which can be matched.
-      -- , _chrgstWorkStore             :: !(WorkStore cnstr)                               -- ^ Actual database of solvable constraints
-      -- , _chrgstNextFreeWorkInx       :: {-# UNPACK #-} !WorkTime                                        -- ^ Next free work/constraint identification, used by solving to identify whether a rule has been used for a constraint.
       , _chrgstScheduleQueue         :: !(Que.MinPQueue (CHRPrioEvaluatableVal bprio) (CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m (SolverResult subst)))
       , _chrgstTrace                 :: !(SolveTrace' cnstr (StoredCHR cnstr guard bprio prio) subst)
       , _chrgstStatNrSolveSteps      :: {-# UNPACK #-} !Int
@@ -300,16 +295,6 @@ bst = sndl
 {-# INLINE bst #-}
 
 -- | All required behavior, as alias
-{-
-class ( IsCHRSolvable env cnstr guard bprio prio subst
-      , Monad m
-      , Lookup subst (VarLookupKey subst) (VarLookupVal subst)
-      , LookupApply subst subst
-      , Fresh Int (ExtrValVarKey (VarLookupVal subst))
-      , ExtrValVarKey (VarLookupVal subst) ~ VarLookupKey subst
-      , VarTerm (VarLookupVal subst)
-      ) => MonoBacktrackPrio cnstr guard bprio prio subst env m
--}
 type MonoBacktrackPrio cnstr guard bprio prio subst env m
     = ( IsCHRSolvable env cnstr guard bprio prio subst
       , Monad m
@@ -339,14 +324,6 @@ data SolverResult subst =
 -------------------------------------------------------------------------------------------
 
 -- | Alias API for solving requirements
-{-
-class ( IsCHRConstraint env c s
-      , IsCHRGuard env g s
-      , IsCHRBacktrackPrio env bp s
-      , IsCHRPrio env p s
-      , PP (VarLookupKey s)
-      ) => IsCHRSolvable env c g bp p s
--}
 type IsCHRSolvable env c g bp p s
     = ( IsCHRConstraint env c s
       , IsCHRGuard env g s
@@ -659,7 +636,6 @@ runCHRMonoBacktrackPrioT
   :: MonoBacktrackPrio cnstr guard bprio prio subst env m
      => CHRGlobState cnstr guard bprio prio subst env m
      -> CHRBackState cnstr bprio subst env
-     -- -> CHRPrioEvaluatableVal bprio
      -> CHRMonoBacktrackPrioT cnstr guard bprio prio subst env m (SolverResult subst)
      -> m ([SolverResult subst], (CHRGlobState cnstr guard bprio prio subst env m, CHRBackState cnstr bprio subst env))
 runCHRMonoBacktrackPrioT gs bs {- bp -} m = observeStateAllT (gs, bs {- _chrbstBacktrackPrio=bp -}) m
@@ -1014,20 +990,6 @@ slvFreshSubst except x =
         modifyAndGet (bst ^* chrbstFreshVar) (freshWith $ Just v) >>= \v' -> return $ (Lk.singleton v (varTermMkKey v') :: s)
 {-# INLINE slvFreshSubst #-}
 
-{-
--- | Lookup work in a store part of the global state
-slvLookup
-  :: ( MonoBacktrackPrio c g bp p s e m
-     , Ord x
-     ) => CHRKey c                                   -- ^ work key
-       -> Lens (CHRGlobState c g bp p s e m) (CHRTrie' c [x])
-       -> CHRMonoBacktrackPrioT c g bp p s e m [x]
-slvLookup key t =
-    (getl $ gst ^* t) >>= \t -> do
-      let lkup how = concat $ TreeTrie.lookupResultToList $ TreeTrie.lookupPartialByKey how key t
-      return $ Set.toList $ Set.fromList $ lkup TTL_WildInTrie ++ lkup TTL_WildInKey
--}
-
 -- | Lookup work in a store part of the global state
 slvLookup
   :: ( MonoBacktrackPrio c g bp p s e m
@@ -1037,39 +999,8 @@ slvLookup
        -> CHRMonoBacktrackPrioT c g bp p s e m [x]
 slvLookup key t =
     (getl t) >>= \t -> do
-      {-
-      let lkup how = concat $ TreeTrie.lookupResultToList $ TreeTrie.lookupPartialByKey how key t
-      return $ Set.toList $ Set.fromList $ lkup TTL_WildInTrie ++ lkup TTL_WildInKey
-      -}
       return $ concat $ TT.lookupResultToList $ TT.lookup key t
 {-# INLINE slvLookup #-}
-
-{-
--- | Extract candidates matching a CHRKey.
---   Return a list of CHR matches,
---     each match expressed as the list of constraints (in the form of Work + Key) found in the workList wlTrie, thus giving all combis with constraints as part of a CHR,
---     partititioned on before or after last query time (to avoid work duplication later)
-slvCandidate
-  :: ( MonoBacktrackPrio c g bp p s e m
-     -- , Ord (TTKey c), PP (TTKey c)
-     ) => WorkInxSet                           -- ^ active in queue
-       -> Set.Set MatchedCombi                      -- ^ already matched combis
-       -> WorkInx                                   -- ^ work inx
-       -> StoredCHR c g bp p                        -- ^ found chr for the work
-       -> Int                                       -- ^ position in the head where work was found
-       -> CHRMonoBacktrackPrioT c g bp p s e m
-            ( [[WorkInx]]                           -- All matches of the head, unfiltered w.r.t. deleted work
-            )
-slvCandidate waitingWk alreadyMatchedCombis wi (StoredCHR {_storedHeadKeys = ks, _storedChrInx = ci}) headInx = do
-    let [ks1,_,ks2] = splitPlaces [headInx, headInx+1] ks
-    ws1 <- forM ks1 lkup
-    ws2 <- forM ks2 lkup
-    return $ filter (\wi ->    all (`IntSet.member` waitingWk) wi
-                            && Set.notMember (MatchedCombi ci wi) alreadyMatchedCombis)
-           $ combineToDistinguishedEltsBy (==) $ ws1 ++ [[wi]] ++ ws2
-  where
-    lkup k = slvLookup k (chrgstWorkStore ^* wkstoreTrie)
--}
 
 -- | Extract candidates matching a CHRKey.
 --   Return a list of CHR matches,
@@ -1078,8 +1009,6 @@ slvCandidate waitingWk alreadyMatchedCombis wi (StoredCHR {_storedHeadKeys = ks,
 slvCandidate
   :: forall c g bp p s e m
    . ( MonoBacktrackPrio c g bp p s e m
-     -- , Ord (TTKey c), PP (TTKey c)
-     -- , ExtrValVarKey (VarLookupVal s) ~ VarLookupKey s
      ) => WorkInxSet                           -- ^ active in queue
        -> Set.Set MatchedCombi                      -- ^ already matched combis
        -> WorkInx                                   -- ^ work inx
@@ -1108,10 +1037,7 @@ slvMatch
      , CHRMatchable env c s
      , CHRCheckable env g s
      , CHRMatchable env bp s
-     -- , CHRPrioEvaluatable env p s
      , CHRPrioEvaluatable env bp s
-     -- , CHRBuiltinSolvable env b s
-     -- , PP s
      ) => env
        -> StoredCHR c g bp p
        -> [c]
@@ -1134,17 +1060,3 @@ slvMatch env chr@(StoredCHR {_storedChrRule = Rule {rulePrio = mbpr, ruleHead = 
     freevars = Set.unions [varFreeSet hc, maybe Set.empty varFreeSet mbbpr]
 {-# INLINE slvMatch #-}
 
--------------------------------------------------------------------------------------------
---- Instances: Serialize
--------------------------------------------------------------------------------------------
-
-{-
-instance (Ord (TTKey c), Serialize (TTKey c), Serialize c, Serialize g, Serialize b, Serialize p) => Serialize (CHRStore c g b p) where
-  sput (CHRStore a) = sput a
-  sget = liftM CHRStore sget
-  
-instance (Serialize c, Serialize g, Serialize b, Serialize p, Serialize (TTKey c)) => Serialize (StoredCHR c g bp p) where
-  sput (StoredCHR a b c d) = sput a >> sput b >> sput c >> sput d
-  sget = liftM4 StoredCHR sget sget sget sget
-
--}

@@ -16,11 +16,6 @@ module CHR.Pretty.Simple
   , fill
   , indent
 
-{-
-  , pp_wrap, pp_quotes, pp_doubleQuotes, pp_parens, pp_brackets, pp_braces
-  , ppPacked, ppParens, ppBrackets, ppBraces, ppCurlys
--}
-
   , empty, text
   
   -- * Internal use only
@@ -29,7 +24,6 @@ module CHR.Pretty.Simple
   where
 
 import System.IO
--- import Data.Data
 import Data.Typeable
 
 -------------------------------------------------------------------------

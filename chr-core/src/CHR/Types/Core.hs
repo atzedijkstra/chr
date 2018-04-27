@@ -4,26 +4,15 @@
 --- Constraint Handling Rules
 -------------------------------------------------------------------------------------------
 
-{- |
-Derived from work by Gerrit vd Geest, but with searching structures for predicates
-to avoid explosion of search space during resolution.
--}
-
 module CHR.Types.Core
   ( IsConstraint(..)
   , ConstraintSolvesVia(..)
 
   , IsCHRConstraint(..)
-  -- , CHRConstraint(..)
   
   , IsCHRGuard(..)
-  -- , CHRGuard(..)
-  
-  -- , IsCHRBuiltin(..)
-  -- , CHRBuiltin(..)
-  
+    
   , IsCHRPrio(..)
-  -- , CHRPrio(..)
   
   , IsCHRBacktrackPrio(..)
   
@@ -34,8 +23,6 @@ module CHR.Types.Core
   , CHRMatcher
   , chrmatcherRun'
   , chrmatcherRun
-  -- , chrmatcherLift
-  -- , chrmatcherUnlift
   
   , chrmatcherstateEnv
   , chrmatcherstateVarLookup
@@ -48,7 +35,6 @@ module CHR.Types.Core
   , chrMatchSuccess
   , chrMatchWait
   , chrMatchSucces
-  -- , chrMatchVarUpd
   
   , CHRMatchEnv(..)
   , emptyCHRMatchEnv
@@ -65,9 +51,7 @@ module CHR.Types.Core
   , Prio(..)
   , CHRPrioEvaluatable(..)
   , CHRPrioEvaluatableVal
-  
-  -- , CHRBuiltinSolvable(..)
-  
+    
   , CHRTrOpt(..)
   
   , IVar
@@ -80,11 +64,6 @@ module CHR.Types.Core
   )
   where
 
--- import qualified UHC.Util.TreeTrie as TreeTrie
-import           CHR.Data.VarMp
-import           CHR.Data.Lookup            (Lookup, Stacked, LookupApply)
-import qualified CHR.Data.Lookup            as Lk
-import qualified CHR.Data.Lookup.Stacked    as Lk
 import qualified Data.Map.Strict            as Map
 import qualified Data.HashMap.Strict        as MapH
 import qualified Data.IntMap.Strict         as IntMap
@@ -92,22 +71,24 @@ import           Data.Word
 import           Data.Monoid
 import           Data.Typeable
 import           Data.Function
-import           Unsafe.Coerce
 import qualified Data.Set as Set
-import           CHR.Pretty
--- import           UHC.Util.CHR.Key
-import qualified CHR.Data.TreeTrie          as TT
+
+import           Unsafe.Coerce
+
 import           Control.Monad
 import           Control.Monad.State -- .Strict
 import           Control.Monad.Except
 import           Control.Monad.Identity
+
+import           CHR.Pretty
+import           CHR.Data.VarMp
+import           CHR.Data.Lookup            (Lookup, Stacked, LookupApply)
+import qualified CHR.Data.Lookup            as Lk
+import qualified CHR.Data.Lookup.Stacked    as Lk
+import qualified CHR.Data.TreeTrie          as TT
 import           CHR.Data.Lens
 import           CHR.Utils
--- import           UHC.Util.Binary
--- import           UHC.Util.Serialize
 import           CHR.Data.Substitutable
-
--- import           UHC.Util.Debug
 
 -------------------------------------------------------------------------------------------
 --- Name <-> Var mapping
@@ -292,24 +273,6 @@ instance Ord Prio where
 -------------------------------------------------------------------------------------------
 
 -- | Alias API for constraint requirements
-{-
-class ( CHRMatchable env c subst
-      -- , CHRBuiltinSolvable env c subst
-      , VarExtractable c
-      , VarUpdatable c subst
-      , Typeable c
-      -- , Serialize c
-      -- , TTKeyable c
-      , TT.TreeTrieKeyable c
-      , IsConstraint c
-      , Ord c
-      -- , Ord (TTKey c)
-      , Ord (TT.TrTrKey c)
-      , PP c
-      -- , PP (TTKey c)
-      , PP (TT.TrTrKey c)
-      ) => IsCHRConstraint env c subst
--}
 type IsCHRConstraint env c subst
     = ( CHRMatchable env c subst
       -- , CHRBuiltinSolvable env c subst
@@ -333,15 +296,6 @@ type IsCHRConstraint env c subst
 -------------------------------------------------------------------------------------------
 
 -- | Alias API for guard requirements
-{-
-class ( CHRCheckable env g subst
-      , VarExtractable g
-      , VarUpdatable g subst
-      , Typeable g
-      -- , Serialize g
-      , PP g
-      ) => IsCHRGuard env g subst
--}
 type IsCHRGuard env g subst
     = ( CHRCheckable env g subst
       , VarExtractable g
@@ -356,13 +310,6 @@ type IsCHRGuard env g subst
 -------------------------------------------------------------------------------------------
 
 -- | Alias API for priority requirements
-{-
-class ( CHRPrioEvaluatable env p subst
-      , Typeable p
-      -- , Serialize p
-      , PP p
-      ) => IsCHRPrio env p subst
--}
 type IsCHRPrio env p subst
     = ( CHRPrioEvaluatable env p subst
       , Typeable p
@@ -371,13 +318,6 @@ type IsCHRPrio env p subst
       )
 
 -- | Alias API for backtrack priority requirements
-{-
-class ( IsCHRPrio env bp subst
-      , CHRMatchable env bp subst
-      , PP (CHRPrioEvaluatableVal bp)
-      -- -- , Num (CHRPrioEvaluatableVal bp)
-      ) => IsCHRBacktrackPrio env bp subst
--}
 type IsCHRBacktrackPrio env bp subst
     = ( IsCHRPrio env bp subst
       , CHRMatchable env bp subst
@@ -571,18 +511,5 @@ instance PP Prio where
 -------------------------------------------------------------------------------------------
 
 type instance CHRPrioEvaluatableVal () = Prio
-
-{-
-instance {-# OVERLAPPABLE #-} Ord x => CHRPrioEvaluatable env x subst where
-  -- chrPrioEval _ _ _ = minBound
-  chrPrioCompare _ (_,x) (_,y) = compare x y
--}
-
-{-
-instance {-# OVERLAPPABLE #-} CHRPrioEvaluatable env () subst where
-  chrPrioLift _ = ()
-  chrPrioEval _ _ _ = minBound
-  chrPrioCompare _ _ _ = EQ
--}
 
 

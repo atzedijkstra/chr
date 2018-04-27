@@ -18,11 +18,8 @@ module CHR.Types.Rule
   
   , Rule(..)
   , ruleBody, ruleBody'
-  -- , ruleBodyBuiltin
   , ruleSz
-  
-  -- , CHRRule(..)
-  
+    
   , (/\)
   , (\/)
   , (\!)
@@ -34,20 +31,18 @@ module CHR.Types.Rule
   )
   where
 
-import qualified CHR.Data.TreeTrie              as TT
-import           CHR.Data.VarMp
-import           CHR.Utils
 import           Data.Monoid
 import           Data.List as List
 import           Data.Typeable
--- import           Data.Data
 import qualified Data.Set as Set
+
+import qualified CHR.Data.TreeTrie              as TT
+import           CHR.Data.VarMp
+import           CHR.Utils
 import           CHR.Pretty
--- import           UHC.Util.CHR.Key
-import           Control.Monad
--- import           UHC.Util.Binary
--- import           UHC.Util.Serialize
 import           CHR.Data.Substitutable
+
+import           Control.Monad
 
 -------------------------------------------------------------------------------------------
 --- CHR, derived structures
@@ -221,28 +216,3 @@ r =@ l = labelRule l r
 l @= r = r =@ l
 {-# INLINE (@=) #-}
 
--------------------------------------------------------------------------------------------
---- Instances: Serialize
--------------------------------------------------------------------------------------------
-
-{-
-instance (Serialize c,Serialize p) => Serialize (RuleBodyAlt c p) where
-  sput (RuleBodyAlt a b) = sput a >> sput b
-  sget = liftM2 RuleBodyAlt sget sget
-
-instance (Serialize c,Serialize g,Serialize bp,Serialize p) => Serialize (Rule c g bp p) where
-  sput (Rule a b c d e f g) = sput a >> sput b >> sput c >> sput d >> sput e >> sput f >> sput g
-  sget = liftM7 Rule sget sget sget sget sget sget sget
--}
-
-{-
-instance (MkSolverConstraint (CHRConstraint e s) x', Serialize x') => Serialize (CHRConstraint e s) where
-  sput x = maybe (panic "CHR.Types.Rule.Serialize.MkSolverConstraint.sput") sput $ fromSolverConstraint x
-  sget = liftM toSolverConstraint sget
--}
-
-{-
-instance Serialize (CHRRule e s) where
-  sput (CHRRule a) = sput a
-  sget = liftM CHRRule sget
--}
