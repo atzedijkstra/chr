@@ -37,7 +37,6 @@ module CHR.Solve.MonoBacktrackPrio
   , runCHRMonoBacktrackPrioT
   
   , addRule
-  -- , addRule2
   
   , addConstraintAsWork
   
@@ -79,6 +78,7 @@ import           Data.Typeable
 import           Data.Maybe
 
 import           Control.Monad
+-- import           Control.Monad.IO.Class
 import           Control.Monad.Except
 import           Control.Monad.State.Strict
 import           Control.Monad.LogicState
@@ -298,6 +298,8 @@ bst = sndl
 type MonoBacktrackPrio cnstr guard bprio prio subst env m
     = ( IsCHRSolvable env cnstr guard bprio prio subst
       , Monad m
+      -- TODO: replace MonadIO with API abstracting away access to persistent structures
+      -- , MonadIO m
       , Lookup subst (VarLookupKey subst) (VarLookupVal subst)
       , LookupApply subst subst
       , Fresh Int (ExtrValVarKey (VarLookupVal subst))
@@ -951,7 +953,7 @@ chrSolve opts env = slv
           alts -> do
                 forM alts $ \alt@(FoundBodyAlt {foundBodyAltBacktrackPrio=bprio}) -> do
                   log (Just alt)
-                  (backtrack $ nextwork bprio alt) >>= slvSchedule bprio
+                  (backtrackWithRoll (\_ _ bs -> {- (liftIO $ putStrLn "TEST") >> -} return bs) $ nextwork bprio alt) >>= slvSchedule bprio
                 slvScheduleRun
 
       where
