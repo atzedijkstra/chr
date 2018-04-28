@@ -1,5 +1,9 @@
 # Revision history for chr
 
+## 0.1.0.3  -- 2018-04-28
+
+* init of infra for factoring out API for storing stuff
+
 ## 0.1.0.2  -- 2018-01-07
 
 * haddock build errors fixed
