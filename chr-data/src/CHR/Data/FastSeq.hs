@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module CHR.Data.FastSeq
   ( FastSeq((:++:),(::+:),(:+::))
   , Seq
@@ -41,6 +43,11 @@ empty = FSeqNil
 -------------------------------------------------------------------------
 -- Instances
 -------------------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ >= 804
+instance Semigroup (FastSeq a) where
+  (<>) = union
+#endif
 
 instance Monoid (FastSeq a) where
   mempty  = empty

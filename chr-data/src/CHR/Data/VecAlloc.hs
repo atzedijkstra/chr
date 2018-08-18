@@ -15,6 +15,8 @@ module CHR.Data.VecAlloc
   , toList
   , fromList
   , null
+  
+  , size
   )
   where
 
@@ -101,3 +103,6 @@ null = List.null . toList
 unionWith :: (e -> e -> e) -> VecAlloc e -> VecAlloc e -> VecAlloc e
 unionWith f (VecAlloc {_vecallocVec=v1}) (VecAlloc {_vecallocVec=v2})
 -}
+
+size :: VecAlloc e -> Int
+size = V.length . _vecallocVec

@@ -123,6 +123,7 @@ instance Lookup (VAr.VecAlloc e) Int e where
   toList            = VAr.toList
   fromList          = VAr.fromList
   null              = VAr.null
+  size              = VAr.size
 
 -------------------------------------------------------------------------------------------
 -- Instances: LookupApply

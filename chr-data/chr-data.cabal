@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                chr-data
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            Datatypes required for chr library
 description:         Datatypes required for chr library, in particular searching on treestructures, lookup abstraction, substitutions, etc. These are also used (via uhc-util) in UHC.
 homepage:            https://github.com/atzedijkstra/chr

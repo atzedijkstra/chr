@@ -132,7 +132,7 @@ instance PP tm => PP (S' tm) where
 
 type instance ExtrValVarKey (G' tm) = Var
 type instance ExtrValVarKey (C' tm) = Var
-type instance ExtrValVarKey (P'  tm) = Var
+type instance ExtrValVarKey (P' tm) = Var
 
 type instance CHRMatchableKey (S' (tm op)) = Key' op
 

@@ -1,5 +1,9 @@
 # Revision history for chr
 
+## 0.1.0.4  -- 2018-08-18
+
+* ghc 8.4
+
 ## 0.1.0.3  -- 2018-04-27
 
 * comment cleanup
