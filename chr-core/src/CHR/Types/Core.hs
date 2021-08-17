@@ -425,8 +425,10 @@ chrmatcherUnlift mtch menv s = do
 -- | Lift into CHRMatcher
 chrmatcherLift :: (LookupApply subst subst) => (subst -> Maybe subst) -> CHRMatcher subst ()
 chrmatcherLift f = do
-    [sl,sg] <- fmap Lk.unlifts $ getl chrmatcherstateVarLookup -- gets (unStackedVarLookup . _chrmatcherstateVarLookup)
-    maybe chrMatchFail (\snew -> chrmatcherstateVarLookup =$: (Lk.apply snew)) $ f sg
+    s <- fmap Lk.unlifts $ getl chrmatcherstateVarLookup -- gets (unStackedVarLookup . _chrmatcherstateVarLookup)
+    case s of
+      [sl, sg] -> maybe chrMatchFail (\snew -> chrmatcherstateVarLookup =$: (Lk.apply snew)) $ f sg
+      _ -> error "chrmatcherLift expects exactly two elements in the varlookup stack."
 
 -- | Run a CHRMatcher
 chrmatcherRun' :: (CHREmptySubstitution subst) => (CHRMatcherFailure -> r) -> (subst -> CHRWaitForVarSet subst -> x -> r) -> CHRMatcher subst x -> CHRMatchEnv (VarLookupKey subst) -> StackedVarLookup subst -> r
