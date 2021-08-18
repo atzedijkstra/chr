@@ -91,19 +91,19 @@ a ^. f = get f a
 
 -- | Alias for 'get' to avoid conflict with state get; not happy choice because of 'getl'
 getL :: (f :-> a) -> f -> a
-getL = flip (^.)
+getL = \x y -> y ^. x
 {-# INLINE getL #-}
 
 infixr 4 ^=
 -- | functional setter, which acts like a field assigner
 (^=) :: (a :-> b) -> b -> a -> a
-(^=) = set
+(^=) = \x y -> set x y
 {-# INLINE (^=) #-}
 
 infixr 4 ^$=
 -- | functional modify
 (^$=) :: (a :-> b) -> (b -> b) -> a -> a
-(^$=) = over
+(^$=) = \x f -> over x f
 {-# INLINE (^$=) #-}
 
 {-
@@ -126,18 +126,18 @@ modifyAndGet = (=$^:)
 
 -- | monadic get
 getl :: MS.MonadState f m => (f :-> o) -> m o
-getl = use
+getl = \x -> use x
 
 infixr 4 =:
 -- | monadic set
 (=:) :: MS.MonadState f m => (f :-> o) -> o -> m ()
-(=:) = (.=)
+(=:) = \x y -> x .= y
 {-# INLINE (=:) #-}
 
 infixr 4 =$:
 -- | monadic modify & set
 (=$:) :: MS.MonadState f m => (f :-> o) -> (o -> o) -> m ()
-(=$:) = modifying
+(=$:) = \x f -> modifying x f
 {-# INLINE (=$:) #-}
 
 {-
