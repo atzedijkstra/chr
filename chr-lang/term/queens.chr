@@ -1,7 +1,10 @@
 -- Pure backtracking example, no use of global vars or priority
 -- Higher queen problems are very slow, can be used for optimizing the solver
 
-{- Performance (MacBook (12", Early 2016), 1,2 GHz Intel Core m5, 8 GB 1867 MHz LPDDR3):
+{-
+--------
+-- Performance (MacBook (12", Early 2016), 1,2 GHz Intel Core m5, 8 GB 1867 MHz LPDDR3):
+--------
 
 Queens 6 (4 solutions)
 --------
@@ -10,6 +13,15 @@ Queens 6 (4 solutions)
 real	0m28.520s
 user	0m28.118s
 sys	0m0.273s
+
+--------
+-- Performance MacBook Pro (15-inch, 2018), 2,9 GHz 6-Core Intel Core i9:
+--------
+---------------- DONE (13.986641s / 788842 = 0.000017730598s) term/queens.chr ----------------
+
+real	0m14.093s
+user	0m13.993s
+sys	0m0.074s
 -}
 
 {-
