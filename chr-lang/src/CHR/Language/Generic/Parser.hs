@@ -37,7 +37,7 @@ scanOpts
 -------------------------------------------------------------------------------------------
 
 -- | Parse a file as a CHR spec + queries
-parseFile :: GTermAs c g bp rp => FilePath -> IO (Either PP_Doc ([Rule c g bp rp], [c], NmToVarMp))
+parseFile :: GTermAs c g bp rp => FilePath -> IO (Either PP_Doc ([Rule c g bp rp], [[c]], NmToVarMp))
 parseFile f = do
     toks <- scanFile
       (Set.toList $ scoKeywordsTxt scanOpts)
@@ -57,7 +57,7 @@ parseFile f = do
           bs  <- forM bs asBodyConstraint
           return $ a {rbodyaltBacktrackPrio=mbp, rbodyaltBody=bs}
         return $ r {ruleHead=hcs, ruleGuard=gs, ruleBodyAlts=as, ruleBacktrackPrio=mbp, rulePrio=mrp}
-      query <- forM query asHeadConstraint
+      query <- forM query $ mapM asHeadConstraint
       return (prog,query)
 
 -------------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ parseFile f = do
 type Pr p = PlainParser Token p
 
 -- | CHR Program = rules + optional queries
-pProg :: Pr ([Rule GTm GTm GTm GTm], [GTm])
+pProg :: Pr ([Rule GTm GTm GTm GTm], [[GTm]])
 pProg =
     pRules <+> pQuery
   where
@@ -100,7 +100,7 @@ pProg =
 
     pRules = pList (pR <* pKey ".")
 
-    pQuery = concat <$> pList (pKey "?" *> pList1Sep pComma pTm_Op <* pKey ".")
+    pQuery = pList (pKey "?" *> pList1Sep pComma pTm_Op <* pKey ".")
     
     pTm
       = pTm_Op

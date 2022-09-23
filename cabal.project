@@ -1,0 +1,6 @@
+packages:
+  chr-data
+  chr-pretty
+  chr-parse
+  chr-lang
+  chr-core

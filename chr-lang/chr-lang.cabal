@@ -47,7 +47,7 @@ library
     fgl >= 5.4,
     mtl >= 2,
     time >= 1.8,
-    chr-parse >= 0.1.0.0,
+    chr-parse >= 0.1.1.0,
     chr-pretty >= 0.1.0.0,
     chr-data >= 0.1.0.0,
     chr-core >= 0.1.1.0

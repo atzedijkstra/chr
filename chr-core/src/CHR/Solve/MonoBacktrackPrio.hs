@@ -611,9 +611,10 @@ ppSolverResult
        -> SolverResult s
        -> CHRMonoBacktrackPrioT c g bp p s e m PP_Doc
 ppSolverResult verbosity (SolverResult {slvresSubst = s, slvresResidualCnstr = ris, slvresWorkCnstr = wis, slvresWaitVarCnstr = wvis, slvresReductionSteps = steps}) = do
-    rs  <- forM ris  $ \i -> lkupWork i >>= return . pp . workCnstr
-    ws  <- forM wis  $ \i -> lkupWork i >>= return . pp . workCnstr
-    wvs <- forM wvis $ \i -> lkupWork i >>= return . pp . workCnstr
+    let lk i = lkupWork i >>= return . pp . workCnstr
+    rs  <- forM ris  lk
+    ws  <- forM wis  lk
+    wvs <- forM wvis lk
     ss  <- if verbosity >= Verbosity_ALot
       then forM steps $ \step -> cvtSolverReductionStep step >>= (return . pp)
       else return [pp $ "Only included with enough verbosity turned on"]
@@ -870,13 +871,19 @@ chrSolve opts env = slv
                           fmap (FoundWorkMatch ci c wi) $ slvMatch env c (map workCnstr w) (chrciAt ci)
 
                     -- split off the work which has to wait for variable bindings (as indicated by matching)
-                    -- let () = partition () foundWorkMatches
                     -- sort over priorities
                     let foundWorkSortedMatches = sortByOn (compareFoundMatchSortKey $ chrPrioCompare env) fst
-                          [ (k, FoundWorkSortedMatch (foundWorkMatchInx fwm) (foundWorkMatchChr fwm) (foundSlvMatchBodyAlts sm)
-                                                     (foundWorkMatchWorkInx fwm) (foundSlvMatchSubst sm) (foundSlvMatchFreeVars sm) (foundSlvMatchWaitForVars sm))
+                          [ (k, FoundWorkSortedMatch
+                                  { foundWorkSortedMatchInx         = foundWorkMatchInx fwm
+                                  , foundWorkSortedMatchChr         = foundWorkMatchChr fwm
+                                  , foundWorkSortedMatchBodyAlts    = foundSlvMatchBodyAlts sm
+                                  , foundWorkSortedMatchWorkInx     = foundWorkMatchWorkInx fwm
+                                  , foundWorkSortedMatchSubst       = foundSlvMatchSubst sm
+                                  , foundWorkSortedMatchFreeVars    = foundSlvMatchFreeVars sm
+                                  , foundWorkSortedMatchWaitForVars = foundSlvMatchWaitForVars sm
+                                  }
+                            )
                           | fwm@(FoundWorkMatch {foundWorkMatchSlvMatch = Just sm@(FoundSlvMatch {foundSlvMatchSortKey=k})}) <- foundWorkMatches
-                          -- , (k,a) <- foundSlvMatchBodyAlts sm
                           ]
 
                     bprio <- getl $ bst ^* chrbstBacktrackPrio
@@ -897,13 +904,12 @@ chrSolve opts env = slv
                                -- >-< "prio'd" >#< ppAssocL (zip [0::Int ..] $ map ppAssocL foundWorkSortedMatches)
 
                     -- pick the first and highest rule prio solution
-                    case foundWorkSortedMatches of
-                      ((_,fwsm@(FoundWorkSortedMatch {foundWorkSortedMatchWaitForVars = waitForVars})):_)
-                        | Set.null waitForVars -> do
+                    case break (Set.null . foundWorkSortedMatchWaitForVars) $ map snd foundWorkSortedMatches of
+                      (_, fwsm:_) -> do
                             -- addRedoToWorkQueue workInx
                             addToWorkQueue workInx
                             slv1 bprio fwsm
-                        | otherwise -> do
+                      ((FoundWorkSortedMatch {foundWorkSortedMatchWaitForVars = waitForVars}):_, _) -> do
                             -- put on wait queue if there are unresolved variables
                             addWorkToWaitForVarQueue waitForVars workInx
                             -- continue without reschedule

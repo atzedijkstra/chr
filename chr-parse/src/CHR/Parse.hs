@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, FlexibleContexts, CPP #-}
+{-# LANGUAGE RankNTypes, FlexibleContexts, CPP, MonoLocalBinds #-}
 
 module CHR.Parse
   ( module UU.Parsing

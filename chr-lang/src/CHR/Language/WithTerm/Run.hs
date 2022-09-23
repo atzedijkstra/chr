@@ -17,6 +17,7 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.State.Class
 import qualified Data.Set as Set
+import           Data.Foldable                  (for_)
 
 import           CHR.Parse
 import           CHR.Scan
@@ -71,7 +72,7 @@ runFile _ runopts chrVisualize f = do
     mbParse <- parseFile f
     case mbParse of
       Left e -> putPPLn e
-      Right (prog, query, varToNmMp) -> do
+      Right (prog, queries, varToNmMp) -> do
         let verbosity = maximum $ [Verbosity_Quiet] ++ maybeToList (mbRunOptVerbosity runopts) ++ (if RunOpt_DebugTrace `elem` runopts then [Verbosity_ALot] else [])
             sopts = defaultCHRSolveOpts
                       { chrslvOptSucceedOnLeftoverWork = RunOpt_SucceedOnLeftoverWork `elem` runopts
@@ -79,44 +80,54 @@ runFile _ runopts chrVisualize f = do
                       , chrslvOptGatherDebugInfo       = verbosity >= Verbosity_Debug
                       , chrslvOptGatherTraceInfo       = RunOpt_WriteVisualization `elem` runopts || verbosity >= Verbosity_ALot
                       }
-            mbp :: CHRMonoBacktrackPrioT (C' tm) (G' tm) (P' tm) (P' tm) (S' tm) (E' tm) IO (SolverResult (S' tm))
-            mbp = do
-              -- print program
-              liftIO $ putPPLn $ "Rules" >-< indent 2 (vlist $ map pp prog)
-              -- liftIO $ putPPLn $ "Rule TT  keys" >-< indent 2 (vlist $ map (pp . TT.chrToKey . head . ruleHead) prog)
-              -- liftIO $ putPPLn $ "Rule TT2 keys" >-< indent 2 (vlist $ map (pp . TT.toTreeTrieKey) prog)
-              -- freshen query vars
-              query <- slvFreshSubst Set.empty query >>= \s -> return $ s `varUpd` query
-              -- print query
-              liftIO $ putPPLn $ "Query" >-< indent 2 (vlist $ map pp query)
+        -- putPPLn $ "Rule TT  keys" >-< indent 2 (vlist $ map (pp . TT.chrToKey . head . ruleHead) prog)
+        -- putPPLn $ "Rule TT2 keys" >-< indent 2 (vlist $ map (pp . TT.toTreeTrieKey) prog)
+        -- print program
+        putPPLn $ "Rules" >-< indent 2 (vlist $ map pp prog)
+        
+        let -- the prog part of the solver, to be used repeatedly
+            mbpProg :: CHRMonoBacktrackPrioT (C' tm) (G' tm) (P' tm) (P' tm) (S' tm) (E' tm) IO ()
+            mbpProg = do
               mapM_ addRule prog
-              mapM_ addConstraintAsWork query
-              -- solve
-              liftIO $ msg $ "SOLVE " ++ f
-              r <- (Prim.inline chrSolve) sopts ()
-              ppSolverResult verbosity r >>= \sr -> liftIO $ putPPLn $ "Solution" >-< indent 2 sr
-              if (RunOpt_WriteVisualization `elem` runopts)
-                then
-                  do
-                    (CHRGlobState{_chrgstTrace = trace}, _) <- get
-                    time <- liftIO getPOSIXTime
-                    let fileName = "visualization-" ++ show (round time) ++ ".html"
-                    liftIO $ writeFile fileName (showPP $ chrVisualize query trace)
-                    liftIO $ msg "VISUALIZATION"
-                    liftIO $ putStrLn $ "Written visualization as " ++ fileName
-                else (return ())
-              return r
-        tBef <- getSystemTime 
-        (_,(gs,_)) <- runCHRMonoBacktrackPrioT
-          (chrgstVarToNmMp ^= Lk.inverse (flip (,)) varToNmMp $ emptyCHRGlobState)
-          (emptyCHRBackState {- _chrbstBacktrackPrio=0 -}) {- 0 -}
-          mbp
-        tAft <- getSystemTime
-        let tDif = systemToTAITime tAft `diffAbsoluteTime` systemToTAITime tBef
-            nSteps = gs ^. MBP.chrgstStatNrSolveSteps
+            -- multiple query part
+            mbpQueries :: [CHRMonoBacktrackPrioT (C' tm) (G' tm) (P' tm) (P' tm) (S' tm) (E' tm) IO (SolverResult (S' tm))]
+            mbpQueries =
+              [ do
+                  -- freshen query vars
+                  query <- slvFreshSubst Set.empty query >>= \s -> return $ s `varUpd` query
+                  -- print query
+                  liftIO $ msg $ "QUERY"
+                  liftIO $ putPPLn $ "Query" >-< indent 2 (vlist $ map pp query)
+                  mapM_ addConstraintAsWork query
+                  -- solve
+                  liftIO $ msg $ "SOLVE"
+                  r <- (Prim.inline chrSolve) sopts ()
+                  ppSolverResult verbosity r >>= \sr -> liftIO $ putPPLn $ "Solution" >-< indent 2 sr
+                  if (RunOpt_WriteVisualization `elem` runopts)
+                    then
+                      do
+                        (CHRGlobState{_chrgstTrace = trace}, _) <- get
+                        time <- liftIO getPOSIXTime
+                        let fileName = "visualization-" ++ show cnt ++ "-" ++ show (round time) ++ ".html"
+                        liftIO $ writeFile fileName (showPP $ chrVisualize query trace)
+                        liftIO $ msg "VISUALIZATION"
+                        liftIO $ putStrLn $ "Written visualization as " ++ fileName
+                    else (return ())
+                  return r
+              | (cnt, query) <- zip [1::Int ..] queries
+              ]
+        for_ mbpQueries $ \mbpQuery -> do
+          tBef <- getSystemTime 
+          (_,(gs,_)) <- runCHRMonoBacktrackPrioT
+            (chrgstVarToNmMp ^= Lk.inverse (flip (,)) varToNmMp $ emptyCHRGlobState)
+            (emptyCHRBackState {- _chrbstBacktrackPrio=0 -}) {- 0 -}
+            (mbpProg >> mbpQuery)
+          tAft <- getSystemTime
+          let tDif = systemToTAITime tAft `diffAbsoluteTime` systemToTAITime tBef
+              nSteps = gs ^. MBP.chrgstStatNrSolveSteps
 
-        -- done
-        msg $ "DONE (" ++ show tDif ++ " / " ++ show nSteps ++ " = " ++ show (tDif / fromIntegral nSteps) ++ ") " ++ f
+          -- done
+          msg $ "DONE (" ++ show tDif ++ " / " ++ show nSteps ++ " = " ++ show (tDif / fromIntegral nSteps) ++ ") " ++ f
     
   where
     msg m = putStrLn $ "---------------- " ++ m ++ " ----------------"

@@ -1,0 +1,110 @@
+-- :- use_module(library(gensym)).
+-- 
+-- :- chr_constraint eq(+,+).
+-- :- chr_constraint eqlist(+,+).
+-- :- chr_constraint err(+,+,+).
+-- 
+
+(,1) :: eqDft @ Eq x y <=> x == y | .
+
+-- eq(X,X)
+--   <=> true
+--   pragma priority(1).
+-- 
+-- eq(con(F,Args1),con(F,Args2))
+--   <=> length(Args1,L), length(Args2,L)
+--     | eqlist(Args1,Args2)
+--   pragma priority(3).
+-- 
+
+(,3) :: eqListNil @ EqList [] [] <=> .
+
+-- eqlist([],[])
+--   <=> true
+--   pragma priority(3).
+-- 
+
+-- TODO: Usual conditional continuation: don't start with snd RHS term before fst? Or, fst is implicit guard for snd? Or use /\ operator?
+(,3) :: eqListCons @ EqList [h1:t1] [h2:t2] <=> Eq h1 h2, EqList t1 t2 .
+
+-- eqlist([A1|R1],[A2|R2])
+--   <=> eq(A1,A2), eqlist(R1,R2)
+--   pragma priority(3).
+-- 
+
+(,3) :: eqConArgs @ Eq (Con f1 as1) (Con f2 as2) <=> f1 == f2 | EqList as1 as2 .
+
+-- eq(con(F,Args1),con(G,Args2))
+--   <=> F \= G
+--     | err(con(F,Args1),con(G,Args2),different_constructors)
+--   pragma priority(3).
+-- 
+-- eq(con(F,Args1),con(F,Args2))
+--   <=> length(Args1,L1), length(Args2,L2), L1 \= L2
+--     | err(con(F,Args1),con(F,Args2),different_number_of_args)
+--   pragma priority(3).
+-- 
+
+(,3) :: eqConVar @ Eq (Con f as) (Var v) <=> Con f as == v .
+(,3) :: eqVarCon @ Eq (Var v) (Con f as) <=> v == Con f as .
+
+-- eq(con(F,Args),var(V))
+--   <=> c(var(V),con(F,Args))
+--   pragma priority(2).
+-- 
+
+(,3) :: eqVarVar1 @ Eq (Var v1) (Var v2) <=> v1 == v2 | .
+(,2) :: eqVarVar2 @ Eq (Var v1) (Var v2) <=> v1 == v2 .
+
+-- eq(var(V),var(W))
+--   <=> W @< V | eq(var(W),var(V))
+--   pragma priority(2).
+-- 
+-- eq(var(V),con(F,Args))
+--   <=> isfvlst(V,Args)
+--     | err(var(V),con(_,Args),occurs_check)
+--   pragma priority(1).
+-- 
+-- eq(var(V),X) \ eq(T1,T2)
+--   <=> isfv(V,C), subst(V,X,T1,T1_), subst(V,X,T2,T2_)
+--     | eq(T1_,T2_)
+--   pragma priority(1).
+-- 
+-- isfv(V, var(V)).
+-- isfv(V, con(_,Args))
+--   :- isfvlst(V, Args).
+-- isfvlst(V, [A|R])
+--   :- isfv(V, A) ; isfvlst(V, R).
+-- 
+-- subst(V, C, var(V), C).
+-- subst(V, _, var(W), var(W))
+--   :- V \= W.
+-- subst(V, C, con(F,A), con(F,B))
+--   :- substlst(V, C, A, B).
+-- substlst(_, _, [], []).
+-- substlst(V, C, [A|R], [B|S])
+--   :- subst(V, C, A, B), substlst(V, C, R, S).
+
+? Eq (V 1) (V 1)
+.
+? Eq (V 1) (V 2)
+.
+? EqList [A,B] [A,B]
+.
+? EqList [A,B] [A]
+.
+? EqList [A,B] [C,D]
+.
+? Eq (Con A [B]) (Con A [B])
+.
+? Eq (Con A [B]) (Con C [B])
+.
+? Eq (Var x) (Con C [B])
+.
+? Eq (Con C [B]) (Var x)
+.
+? EqList [Var x] [Con C [B]]
+.
+? Eq (Var x) (Con C [B]), Eq (Var x) (Var y)
+.
+

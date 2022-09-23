@@ -1,5 +1,0 @@
-refl @ Eq x x <=> .
--- refl @ Eq x y <=> x == y | .
--- ? Eq 2 2.
-? Eq (Con Int []) (Con (Int) []).
--- ? Eq (X []) (X []).
