@@ -7,6 +7,8 @@
 - chr-core: core of chr library
 - chr-parse: parse library (around uulib parsing)
 - chr-lang: 2 layer front end syntax (general terms, specialized terms w.r.t. an example interpretation)
+- uhc-util: moved into chr
+- logict-state: moved into chr
 
 ## Executables
 
