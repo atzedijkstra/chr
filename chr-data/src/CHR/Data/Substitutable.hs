@@ -15,6 +15,7 @@ module CHR.Data.Substitutable
   )
   where
 
+import           Data.Kind                  (Type)
 import qualified Data.Set as Set
 import           CHR.Data.VarMp
 
@@ -26,7 +27,7 @@ infixr 6 `varUpd`
 infixr 6 `varUpdCyc`
 
 -- | The variable wich is used as a key into a substitution
-type family ExtrValVarKey vv :: *
+type family ExtrValVarKey vv :: Type
 
 -------------------------------------------------------------------------------------------
 --- Updatable

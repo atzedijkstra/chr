@@ -33,6 +33,8 @@ module CHR.Language.Generic.AST
 import           Data.Char
 import           Data.Typeable
 import           Data.Proxy
+import           Data.Kind                  (Type)
+import           Data.Traversable           (for)
 import           GHC.Generics
 import           Control.Monad.Except
 import           Control.Monad.State
@@ -94,7 +96,7 @@ instance PP GTm where
 --- Term interpretation in context of CHR
 -------------------------------------------------------------------------------------------
 
-type family TmOp tm :: *
+type family TmOp tm :: Type
 
 class TmMk tm where
   tmUnaryOps  :: Proxy tm -> [(String, TmOp tm)]
@@ -135,7 +137,7 @@ class TmMk tm => GTermAsTm tm where
         a <- asTm a
         b <- asTm b
         return $ mkTmBinaryOp o' a b
-    GTm_Con c a -> forM a asTm >>= (return . mkTmCon c)
+    GTm_Con c a -> for a asTm >>= (return . mkTmCon c)
     GTm_Var v -> -- Tm_Var <$> gtermasVar v
                  return $ mkTmVar v
     GTm_Str v -> return $ mkTmStr v

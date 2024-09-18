@@ -71,6 +71,7 @@ import           Data.Word
 import           Data.Monoid
 import           Data.Typeable
 import           Data.Function
+import           Data.Kind                  (Type)
 import qualified Data.Set as Set
 
 import           Unsafe.Coerce
@@ -241,7 +242,7 @@ class (CHREmptySubstitution subst, LookupApply subst subst) => CHRCheckable env 
 -------------------------------------------------------------------------------------------
 
 -- | The type of value a prio representation evaluates to, must be Ord instance
-type family CHRPrioEvaluatableVal p :: *
+type family CHRPrioEvaluatableVal p :: Type
 
 -- | A PrioEvaluatable participates in the reduction process to indicate the rule priority, higher prio takes precedence
 class (Ord (CHRPrioEvaluatableVal x), Bounded (CHRPrioEvaluatableVal x)) => CHRPrioEvaluatable env x subst where
@@ -374,7 +375,7 @@ class CHREmptySubstitution subst where
 -------------------------------------------------------------------------------------------
 
 -- | The key of a substitution
-type family CHRMatchableKey subst :: *
+type family CHRMatchableKey subst :: Type
 
 type instance CHRMatchableKey (StackedVarLookup subst) = CHRMatchableKey subst
 

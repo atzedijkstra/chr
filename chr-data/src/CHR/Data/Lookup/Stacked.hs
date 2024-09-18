@@ -26,6 +26,7 @@ import           CHR.Data.Lens               as L
 import           Prelude                     hiding (lookup, null, map)
 import           Data.Maybe
 import qualified Data.List                   as List
+import           Data.Kind                  (Type)
 import qualified Data.Map                    as Map
 import qualified Data.Set                    as Set
 import qualified Data.Vector.Unboxed         as UV
@@ -48,7 +49,7 @@ newtype Stacks l = Stacks {unStacks :: [l]}
 -- Stacked API
 -------------------------------------------------------------------------------------------
 
-type family StackedElt stk :: *
+type family StackedElt stk :: Type
 
 -- | Functionality on top of 'Lookup' for awareness of a scope.
 -- Minimal definition 'lifts', 'unlifts,', 'top'/'topM', 'pop'/'popM', 'push'/'pushM'

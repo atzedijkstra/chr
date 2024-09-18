@@ -125,7 +125,7 @@ modifyAndGet = (=$^:)
 {-# INLINE modifyAndGet #-}
 
 -- | monadic get
-getl :: MS.MonadState f m => (f :-> o) -> m o
+getl :: forall m f o . MS.MonadState f m => (f :-> o) -> m o
 getl = use
 
 infixr 4 =:

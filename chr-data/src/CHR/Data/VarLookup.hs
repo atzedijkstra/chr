@@ -44,6 +44,7 @@ module CHR.Data.VarLookup
 -- import           Control.Applicative
 -- import           Data.Maybe
 -- import           CHR.Pretty
+import           Data.Kind                  (Type)
 import           CHR.Data.Lookup.Stacked
 import           CHR.Data.Lookup.Types      as Lk
 import qualified Data.Set as Set
@@ -65,9 +66,9 @@ metaLevVal = 0
 
 
 -- | Type family for key of a VarLookup
-type family VarLookupKey m :: *
+type family VarLookupKey m :: Type
 -- | Type family for value of a VarLookup
-type family VarLookupVal m :: *
+type family VarLookupVal m :: Type
 
 {- |
 VarLookup abstracts from a Map.

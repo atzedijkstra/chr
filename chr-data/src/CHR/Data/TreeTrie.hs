@@ -69,6 +69,7 @@ import qualified Data.Set                   as Set
 import qualified Data.Map                   as Map
 import           Data.Maybe
 import           Data.Monoid
+import           Data.Kind                  (Type)
 import qualified Data.List                  as List
 import           Data.Typeable(Typeable)
 
@@ -182,7 +183,7 @@ keyRawToCanon = Key . simp . unKey
 --- Keyable
 -------------------------------------------------------------------------------------------
 
-type family TrTrKey x :: *
+type family TrTrKey x :: Type
 
 type instance TrTrKey [x] = TrTrKey x
 type instance TrTrKey (Maybe x) = TrTrKey x

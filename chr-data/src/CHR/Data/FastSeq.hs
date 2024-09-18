@@ -51,7 +51,6 @@ instance Semigroup (FastSeq a) where
 
 instance Monoid (FastSeq a) where
   mempty  = empty
-  mappend = union
   mconcat = unions
 
 {-

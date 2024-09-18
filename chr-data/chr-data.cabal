@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                chr-data
-version:             0.1.0.1
+version:             0.1.2.0
 synopsis:            Datatypes required for chr library
 description:         Datatypes required for chr library, in particular searching on treestructures, lookup abstraction, substitutions, etc. These are also used (via uhc-util) in UHC.
 homepage:            https://github.com/atzedijkstra/chr
@@ -25,7 +25,6 @@ library
   exposed-modules:     
     CHR.Utils,
     CHR.Data.Lens,
-    CHR.Data.Lens.FCLabels,
     CHR.Data.Lens.MicroLens,
     CHR.Data.TreeTrie,
     CHR.Data.Lookup,
@@ -48,7 +47,8 @@ library
     TypeFamilies,
     FlexibleContexts,
     FunctionalDependencies,
-    FlexibleInstances
+    FlexibleInstances,
+    TypeOperators
   -- other-extensions:
   build-depends:
     base >=4.8 && < 5,
@@ -57,7 +57,6 @@ library
     hashable >= 1.2.4,
     unordered-containers >= 0.2.7,
     mtl >= 2,
-    fclabels >= 2.0.3,
     microlens >= 0.4,
     microlens-mtl >= 0.1.6.1,
     microlens-th >= 0.4,
@@ -66,3 +65,4 @@ library
     chr-pretty >= 0.1.0.0
   hs-source-dirs:      src
   default-language:    Haskell2010
+  ghc-options:         -fno-warn-x-partial

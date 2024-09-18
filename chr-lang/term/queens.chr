@@ -22,6 +22,16 @@ sys	0m0.273s
 real	0m14.093s
 user	0m13.993s
 sys	0m0.074s
+
+--------
+-- Performance MacBook Pro M2 (14-inch, 2022)
+--------
+
+---------------- DONE (8.036329s / 788842 = 0.000010187501s) chr/chr-lang/term/queens.chr ----------------
+
+real	0m8.054s
+user	0m7.986s
+sys	0m0.065s
 -}
 
 {-
